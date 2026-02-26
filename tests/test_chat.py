@@ -12,7 +12,7 @@ from typing import Any
 import httpx
 from pytest_mock import MockerFixture
 
-from agent_foundation.chat import (
+from dorothea.chat import (
     extract_agent_response,
     handle_chat_message,
     handle_reset_command,
@@ -35,7 +35,7 @@ async def test_handle_chat_message_success(
     mock_create_session_service(session_id="test-session-success")
     mock_httpx_client(sse_lines=sse_lines, exception=None)
 
-    result = await handle_chat_message(chat_message_event, agent_name="agent_foundation")
+    result = await handle_chat_message(chat_message_event, agent_name="dorothea")
 
     assert result == {"text": "Found 3."}
 
@@ -67,7 +67,7 @@ async def test_handle_chat_message_minimal_event(
     mock_create_session_service(session_id="test-session-minimal")
     mock_httpx_client(sse_lines=sse_lines, exception=None)
 
-    result = await handle_chat_message(minimal_event, agent_name="agent_foundation")
+    result = await handle_chat_message(minimal_event, agent_name="dorothea")
 
     assert result == {"text": "Response"}
 
@@ -99,14 +99,14 @@ async def test_handle_chat_message_all_optional_fields_missing(
     mock_httpx_client(sse_lines=sse_lines, exception=None)
 
     # Event gets "Event received" response because no type field
-    result = await handle_chat_message(minimal_event, agent_name="agent_foundation")
+    result = await handle_chat_message(minimal_event, agent_name="dorothea")
 
     assert result == {"text": "Event received"}
 
     # Verify span was created with only agent.name attribute
     for name, span in mock_tracer.spans:
         if name == "handle_chat_message":
-            assert span.attributes.get("agent.name") == "agent_foundation"
+            assert span.attributes.get("agent.name") == "dorothea"
             assert "chat.event.type" not in span.attributes
             assert "chat.space.name" not in span.attributes
             assert "chat.space.type" not in span.attributes
@@ -133,7 +133,7 @@ async def test_handle_chat_message_space_without_name(
     mock_create_session_service(session_id="test-session-no-space-name")
     mock_httpx_client(sse_lines=sse_lines, exception=None)
 
-    result = await handle_chat_message(event_space_no_name, agent_name="agent_foundation")
+    result = await handle_chat_message(event_space_no_name, agent_name="dorothea")
 
     assert result == {"text": "Response"}
 
@@ -150,7 +150,7 @@ async def test_handle_chat_message_non_message_event(
     """Test handling non-MESSAGE events (should return acknowledgment)."""
     event = {"type": "ADDED_TO_SPACE", "space": {"name": "spaces/TEST"}}
 
-    result = await handle_chat_message(event, agent_name="agent_foundation")
+    result = await handle_chat_message(event, agent_name="dorothea")
 
     assert result == {"text": "Event received"}
 
@@ -173,7 +173,7 @@ async def test_handle_chat_message_timeout(
     mock_create_session_service(session_id="test-session-timeout")
     mock_httpx_client(sse_lines=None, exception=httpx.TimeoutException("Timeout"))
 
-    result = await handle_chat_message(simple_message_event, agent_name="agent_foundation")
+    result = await handle_chat_message(simple_message_event, agent_name="dorothea")
 
     assert "timed out" in result["text"].lower()
 
@@ -201,7 +201,7 @@ async def test_handle_chat_message_http_error(
     )
     mock_httpx_client(sse_lines=None, exception=http_error)
 
-    result = await handle_chat_message(simple_message_event, agent_name="agent_foundation")
+    result = await handle_chat_message(simple_message_event, agent_name="dorothea")
 
     assert "error" in result["text"].lower()
 
@@ -223,7 +223,7 @@ async def test_handle_chat_message_generic_exception(
     mock_create_session_service(session_id="test-session-exception")
     mock_httpx_client(sse_lines=None, exception=Exception("Unexpected error"))
 
-    result = await handle_chat_message(simple_message_event, agent_name="agent_foundation")
+    result = await handle_chat_message(simple_message_event, agent_name="dorothea")
 
     assert "error" in result["text"].lower()
 
@@ -242,9 +242,9 @@ async def test_handle_chat_message_no_agent_engine(
     """Test handling MESSAGE when AGENT_ENGINE is not configured."""
     # Mock server.env.agent_engine to be None
     # (patch in server module where it's defined)
-    mocker.patch("agent_foundation.server.env.agent_engine", None)
+    mocker.patch("dorothea.server.env.agent_engine", None)
 
-    result = await handle_chat_message(simple_message_event, agent_name="agent_foundation")
+    result = await handle_chat_message(simple_message_event, agent_name="dorothea")
 
     assert "not properly configured" in result["text"]
 
@@ -273,7 +273,7 @@ async def test_handle_chat_message_with_non_data_sse_lines(
     mock_create_session_service(session_id="test-session-non-data")
     mock_httpx_client(sse_lines=sse_lines, exception=None)
 
-    result = await handle_chat_message(chat_message_event, agent_name="agent_foundation")
+    result = await handle_chat_message(chat_message_event, agent_name="dorothea")
 
     assert result == {"text": "Response"}
 
@@ -299,7 +299,7 @@ async def test_handle_chat_message_with_parts_without_text(
     mock_create_session_service(session_id="test-session-no-text-parts")
     mock_httpx_client(sse_lines=sse_lines, exception=None)
 
-    result = await handle_chat_message(chat_message_event, agent_name="agent_foundation")
+    result = await handle_chat_message(chat_message_event, agent_name="dorothea")
 
     assert result == {"text": "Final"}
 
@@ -410,9 +410,9 @@ async def test_handle_reset_command_success(
     mock_service.list_sessions = mocker.AsyncMock(return_value=mock_list_result)
     mock_service.delete_session = mocker.AsyncMock()
 
-    mocker.patch("agent_foundation.chat.create_session_service", return_value=mock_service)
+    mocker.patch("dorothea.chat.create_session_service", return_value=mock_service)
 
-    result = await handle_reset_command(reset_command_event, agent_name="agent_foundation")
+    result = await handle_reset_command(reset_command_event, agent_name="dorothea")
 
     assert "start from the beginning" in result["text"]
     assert "reset" in result["text"].lower()
@@ -426,7 +426,7 @@ async def test_handle_reset_command_success(
     for name, span in mock_tracer.spans:
         if name == "handle_reset_command":
             assert span.attributes["chat.command"] == "reset"
-            assert span.attributes["agent.name"] == "agent_foundation"
+            assert span.attributes["agent.name"] == "dorothea"
             assert span.attributes["chat.user.id"] == "TEST_USER"
             assert span.attributes["sessions.deleted_count"] == 1
 
@@ -444,9 +444,9 @@ async def test_handle_reset_command_no_sessions(
     mock_service = mocker.Mock()
     mock_service.list_sessions = mocker.AsyncMock(return_value=mock_list_result)
 
-    mocker.patch("agent_foundation.chat.create_session_service", return_value=mock_service)
+    mocker.patch("dorothea.chat.create_session_service", return_value=mock_service)
 
-    result = await handle_reset_command(reset_command_event, agent_name="agent_foundation")
+    result = await handle_reset_command(reset_command_event, agent_name="dorothea")
 
     assert "don't have any active conversation" in result["text"]
 
@@ -464,9 +464,9 @@ async def test_handle_reset_command_no_agent_engine(
     """Test /reset command when AGENT_ENGINE is not configured."""
     # Mock server.env.agent_engine to be None
     # (patch in server module where it's defined)
-    mocker.patch("agent_foundation.server.env.agent_engine", None)
+    mocker.patch("dorothea.server.env.agent_engine", None)
 
-    result = await handle_reset_command(reset_command_event, agent_name="agent_foundation")
+    result = await handle_reset_command(reset_command_event, agent_name="dorothea")
 
     assert "not properly configured" in result["text"]
 
@@ -486,11 +486,11 @@ async def test_handle_reset_command_generic_exception(
     """Test /reset command when a generic exception occurs."""
     # Mock create_session_service to raise a generic exception
     mocker.patch(
-        "agent_foundation.chat.create_session_service",
+        "dorothea.chat.create_session_service",
         side_effect=RuntimeError("Unexpected error"),
     )
 
-    result = await handle_reset_command(reset_command_event, agent_name="agent_foundation")
+    result = await handle_reset_command(reset_command_event, agent_name="dorothea")
 
     assert "encountered an error" in result["text"]
 

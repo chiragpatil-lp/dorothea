@@ -187,7 +187,7 @@ See [Development](development.md) for the full local development workflow includ
 Authenticate to the deployed agent service using the Cloud Run proxy.
 
 ```bash
-# Service name format: ${AGENT_NAME}-${environment} (e.g., agent-foundation-dev)
+# Service name format: ${AGENT_NAME}-${environment} (e.g., dorothea-dev)
 gcloud run services proxy <service-name> --project <project-id> --region <region> --port 8000
 
 # In another terminal, test the health endpoint

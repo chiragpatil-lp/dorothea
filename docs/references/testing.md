@@ -24,8 +24,8 @@ Tests mirror source structure:
 ```
 tests/
   conftest.py                    # Shared fixtures, mocks, and test environment setup
-  test_callbacks.py              # Tests for src/agent_foundation/callbacks.py
-  test_tools.py                  # Tests for src/agent_foundation/tools.py
+  test_callbacks.py              # Tests for src/dorothea/callbacks.py
+  test_tools.py                  # Tests for src/dorothea/tools.py
   ...
 ```
 

@@ -4,7 +4,7 @@ import logging
 
 import pytest
 
-from agent_foundation.tools import example_tool
+from dorothea.tools import example_tool
 
 
 class TestExampleTool:

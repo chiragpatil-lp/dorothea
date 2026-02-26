@@ -7,7 +7,7 @@ import pytest
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
-from agent_foundation.utils.config import (
+from dorothea.utils.config import (
     ServerEnv,
     initialize_environment,
 )

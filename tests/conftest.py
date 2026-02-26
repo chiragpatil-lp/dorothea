@@ -16,7 +16,7 @@ def pytest_configure(config: pytest.Config) -> None:
     including pytest-mock. We must use unittest.mock.patch here because:
 
     1. This hook runs before test collection
-    2. Test collection imports test modules, which imports agent_foundation modules
+    2. Test collection imports test modules, which imports dorothea modules
     3. Agent modules may trigger API calls during import (auth, config loading)
     4. pytest-mock's mocker/session_mocker fixtures aren't available until AFTER
        test collection completes
@@ -459,7 +459,7 @@ def mock_load_dotenv(mocker: MockerFixture) -> MockType:
     Returns:
         Mock object for load_dotenv function.
     """
-    return mocker.patch("agent_foundation.utils.config.load_dotenv")
+    return mocker.patch("dorothea.utils.config.load_dotenv")
 
 
 @pytest.fixture
@@ -692,7 +692,7 @@ def mock_httpx_client(
             exception: Exception to raise (for error cases)
         """
         mock_client = MockHttpxClient(sse_lines=sse_lines, exception=exception)
-        mocker.patch("agent_foundation.chat.httpx.AsyncClient", return_value=mock_client)
+        mocker.patch("dorothea.chat.httpx.AsyncClient", return_value=mock_client)
 
     return _create_and_patch
 
@@ -766,7 +766,7 @@ def mock_session_service(mocker: MockerFixture) -> MockType:
 def mock_create_session_service(mocker: MockerFixture) -> Callable[..., None]:
     """Mock create_session_service to prevent real API calls in chat tests.
 
-    Patches agent_foundation.chat.create_session_service to return a mock session service
+    Patches dorothea.chat.create_session_service to return a mock session service
     that returns a test session ID without making API calls.
 
     Returns:
@@ -794,7 +794,7 @@ def mock_create_session_service(mocker: MockerFixture) -> Callable[..., None]:
         mock_service.delete_session = mocker.AsyncMock()
 
         # Patch create_session_service to return mock service
-        mocker.patch("agent_foundation.chat.create_session_service", return_value=mock_service)
+        mocker.patch("dorothea.chat.create_session_service", return_value=mock_service)
 
     return _create_and_patch
 
@@ -963,7 +963,7 @@ def mock_tracer(mocker: MockerFixture) -> MockTracer:
             for name, span in mock_tracer.spans:
                 if name == "handle_chat_message":
                     assert span.attributes["chat.event.type"] == "MESSAGE"
-                    assert span.attributes["agent.name"] == "agent_foundation"
+                    assert span.attributes["agent.name"] == "dorothea"
 
             # Verify exception recording
             for name, span in mock_tracer.spans:
@@ -974,6 +974,6 @@ def mock_tracer(mocker: MockerFixture) -> MockTracer:
         MockTracer instance that enforces proper span lifecycle
     """
     mock = MockTracer()
-    mocker.patch("agent_foundation.chat.tracer", mock)
-    mocker.patch("agent_foundation.session.tracer", mock)
+    mocker.patch("dorothea.chat.tracer", mock)
+    mocker.patch("dorothea.session.tracer", mock)
     return mock

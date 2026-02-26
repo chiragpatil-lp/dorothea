@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
 
-from agent_foundation.chat import chat_router, get_agent_name
+from dorothea.chat import chat_router, get_agent_name
 
 
 @pytest.fixture
@@ -30,7 +30,7 @@ def client(app: FastAPI) -> TestClient:
 
 def test_get_agent_name(mocker: MockerFixture) -> None:
     """Test get_agent_name dependency function."""
-    mock_env = mocker.patch("agent_foundation.server.env")
+    mock_env = mocker.patch("dorothea.server.env")
     mock_env.agent_name = "test-agent"
 
     result = get_agent_name()
@@ -44,7 +44,7 @@ def test_webhook_route_success(
     """Test webhook route with successful MESSAGE event."""
     # Mock the handle_chat_message function
     mock_handle = mocker.patch(
-        "agent_foundation.chat.handle_chat_message", return_value={"text": "Success response"}
+        "dorothea.chat.handle_chat_message", return_value={"text": "Success response"}
     )
 
     response = client.post("/chat/webhook", json=chat_message_event)
@@ -62,7 +62,7 @@ def test_webhook_route_reset_command(
     """Test webhook route with /reset command."""
     # Mock handle_reset_command
     mock_reset = mocker.patch(
-        "agent_foundation.chat.handle_reset_command",
+        "dorothea.chat.handle_reset_command",
         return_value={"text": "Conversation reset"},
     )
 
@@ -86,7 +86,7 @@ def test_webhook_route_reset_command_case_insensitive(
 
     # Mock handle_reset_command
     mock_reset = mocker.patch(
-        "agent_foundation.chat.handle_reset_command",
+        "dorothea.chat.handle_reset_command",
         return_value={"text": "Conversation reset"},
     )
 

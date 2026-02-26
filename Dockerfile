@@ -63,4 +63,4 @@ USER app
 EXPOSE 8000
 
 # Run the FastAPI server via main() for unified startup logic (logging, etc.)
-CMD ["python", "-m", "agent_foundation.server"]
+CMD ["python", "-m", "dorothea.server"]

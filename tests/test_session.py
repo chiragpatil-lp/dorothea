@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pytest_mock import MockerFixture
 
-from agent_foundation.session import GoogleChatSessionManager, create_session_service
+from dorothea.session import GoogleChatSessionManager, create_session_service
 
 
 def test_create_session_service():
@@ -35,12 +35,12 @@ async def test_list_sessions_with_sessions(
 
     mock_session_service.list_sessions = mocker.AsyncMock(return_value=response)
 
-    manager = GoogleChatSessionManager(mock_session_service, "agent_foundation")
+    manager = GoogleChatSessionManager(mock_session_service, "dorothea")
     sessions = await manager.list_sessions("users/123456789")
 
     assert sessions == ["session-abc-123", "session-xyz-456"]
     mock_session_service.list_sessions.assert_called_once_with(
-        app_name="agent_foundation",
+        app_name="dorothea",
         user_id="123456789",
     )
 
@@ -53,7 +53,7 @@ async def test_list_sessions_no_sessions(
 
     mock_session_service.list_sessions = mocker.AsyncMock(return_value=response)
 
-    manager = GoogleChatSessionManager(mock_session_service, "agent_foundation")
+    manager = GoogleChatSessionManager(mock_session_service, "dorothea")
     sessions = await manager.list_sessions("users/123456789")
 
     assert sessions == []
@@ -67,12 +67,12 @@ async def test_create_session(
 
     mock_session_service.create_session = mocker.AsyncMock(return_value=session)
 
-    manager = GoogleChatSessionManager(mock_session_service, "agent_foundation")
+    manager = GoogleChatSessionManager(mock_session_service, "dorothea")
     session_id = await manager.create_session("users/123456789")
 
     assert session_id == "session-new-123"
     mock_session_service.create_session.assert_called_once_with(
-        app_name="agent_foundation",
+        app_name="dorothea",
         user_id="123456789",
     )
 
@@ -90,7 +90,7 @@ async def test_get_or_create_session_existing(
 
     mock_session_service.list_sessions = mocker.AsyncMock(return_value=response)
 
-    manager = GoogleChatSessionManager(mock_session_service, "agent_foundation")
+    manager = GoogleChatSessionManager(mock_session_service, "dorothea")
     session_id = await manager.get_or_create_session("users/123456789")
 
     assert session_id == "session-existing-123"
@@ -120,7 +120,7 @@ async def test_get_or_create_session_new(
     mock_session_service.list_sessions = mocker.AsyncMock(return_value=empty_response)
     mock_session_service.create_session = mocker.AsyncMock(return_value=new_session)
 
-    manager = GoogleChatSessionManager(mock_session_service, "agent_foundation")
+    manager = GoogleChatSessionManager(mock_session_service, "dorothea")
     session_id = await manager.get_or_create_session("users/123456789")
 
     assert session_id == "session-new-123"
@@ -139,11 +139,11 @@ async def test_delete_session(mock_session_service, mocker: MockerFixture):
     """Test deleting specific session."""
     mock_session_service.delete_session = mocker.AsyncMock()
 
-    manager = GoogleChatSessionManager(mock_session_service, "agent_foundation")
+    manager = GoogleChatSessionManager(mock_session_service, "dorothea")
     await manager.delete_session("users/123456789", "session-abc-123")
 
     mock_session_service.delete_session.assert_called_once_with(
-        app_name="agent_foundation",
+        app_name="dorothea",
         user_id="123456789",
         session_id="session-abc-123",
     )
@@ -163,7 +163,7 @@ async def test_delete_all_sessions_with_sessions(
     mock_session_service.list_sessions = mocker.AsyncMock(return_value=response)
     mock_session_service.delete_session = mocker.AsyncMock()
 
-    manager = GoogleChatSessionManager(mock_session_service, "agent_foundation")
+    manager = GoogleChatSessionManager(mock_session_service, "dorothea")
     count = await manager.delete_all_sessions("users/123456789")
 
     assert count == 2
@@ -203,7 +203,7 @@ async def test_delete_all_sessions_no_sessions(
     mock_session_service.list_sessions = mocker.AsyncMock(return_value=response)
     mock_session_service.delete_session = mocker.AsyncMock()
 
-    manager = GoogleChatSessionManager(mock_session_service, "agent_foundation")
+    manager = GoogleChatSessionManager(mock_session_service, "dorothea")
     count = await manager.delete_all_sessions("users/123456789")
 
     assert count == 0
@@ -235,7 +235,7 @@ async def test_delete_all_sessions_partial_failure(
         side_effect=[None, RuntimeError("Delete failed")]
     )
 
-    manager = GoogleChatSessionManager(mock_session_service, "agent_foundation")
+    manager = GoogleChatSessionManager(mock_session_service, "dorothea")
     count = await manager.delete_all_sessions("users/123456789")
 
     assert count == 1  # Only one deletion succeeded
@@ -280,7 +280,7 @@ async def test_delete_all_sessions_span_scoping(
         side_effect=[None, RuntimeError("Delete failed")]
     )
 
-    manager = GoogleChatSessionManager(mock_session_service, "agent_foundation")
+    manager = GoogleChatSessionManager(mock_session_service, "dorothea")
     count = await manager.delete_all_sessions("users/123456789")
 
     # Should succeed without RuntimeError about accessing span after exit
