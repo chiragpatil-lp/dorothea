@@ -1,0 +1,134 @@
+[project]
+name = "agent-foundation"
+version = "0.9.4"
+description = "Opinionated, production-ready LLM Agent deployment with enterprise-grade infrastructure"
+readme = "README.md"
+authors = [
+    { name = "doug", email = "110487462+doughayden@users.noreply.github.com" }
+]
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    # Pin ADK to test releases before locking upgrades
+    "google-adk==1.25.1",
+    "google-auth>=2.40.3,<3.0.0",
+    "google-cloud-logging>=3.12.1,<4.0.0",
+    "opentelemetry-exporter-gcp-logging>=1.9.0a0,<2.0.0",
+    "opentelemetry-exporter-otlp-proto-grpc==1.37.0",
+    "opentelemetry-instrumentation-google-genai>=0.4b0,<0.5",
+    "opentelemetry-instrumentation-logging>=0.58b0,<0.59",
+    "pydantic>=2.11.0,<3.0.0",
+    "python-dotenv>=1.0.0,<2.0.0",
+]
+
+[project.scripts]
+server = "agent_foundation.server:main"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12.7,<1.0.0",
+    "mypy>=1.17.1,<2.0.0",
+    "pytest>=8.3.4,<9.0.0",
+    "pytest-cov>=7.0.0,<8.0.0",
+    "pytest-asyncio>=1.2.0,<2.0.0",
+    "ipykernel>=7.0.0,<8.0.0",
+    "types-grpcio>=1.0.0.20251009,<2.0.0.0",
+    "pytest-mock>=3.15.1,<4.0.0",
+]
+docs = [
+    "mkdocs-callouts>=1.16.0,<2.0.0",
+    "mkdocs-material>=9.7.1,<10.0.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.21,<0.9.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+src = ["src"]
+target-version = "py313"
+line-length = 88
+fix = true
+extend-exclude = ["notebooks"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "S",   # flake8-bandit
+    "SIM", # flake8-simplify
+    "PTH", # flake8-use-pathlib
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101"]  # Allow assert statements in tests
+
+[tool.mypy]
+python_version = "3.13"
+mypy_path = "src"
+packages = ["agent_foundation"]
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+# Allow duck-typed mocks in tests
+disable_error_code = "arg-type"
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    # __init__.py files: namespace marker, no logic
+    "src/agent_foundation/**/__init__.py",
+    # server.py: FastAPI setup and ADK initialization (integration tested via CI/CD)
+    "src/agent_foundation/server.py",
+    # agent.py: LlmAgent instantiation (tested through callbacks, not in isolation)
+    "src/agent_foundation/**/agent.py",
+    # prompt.py: Prompt text and formatting (integration tested via agent runs)
+    "src/agent_foundation/**/prompt.py",
+    # observability.py: OpenTelemetry setup (infrastructure initialization)
+    "src/agent_foundation/utils/observability.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+precision = 2
+fail_under = 100
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::pydantic.warnings.PydanticDeprecatedSince212:google.genai.types",
+]
+# Uncomment to enable live logging for debugging API calls
+# log_cli = true
+# log_cli_level = "DEBUG"
+# log_cli_format = "%(asctime)s [%(levelname)8s] %(name)s - %(message)s"
+# log_cli_date_format = "%Y-%m-%d %H:%M:%S"

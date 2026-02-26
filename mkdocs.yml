@@ -1,0 +1,77 @@
+site_name: Agent Foundation Docs
+site_url: https://doughayden.github.io/agent-foundation/
+repo_url: https://github.com/doughayden/agent-foundation
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  icon:
+    logo: material/robot
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+extra_css:
+  - stylesheets/extra.css
+
+plugins:
+  - search
+  - callouts
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+  - def_list
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - nl2br
+
+nav:
+  - Home: README.md
+  - Getting Started:
+    - Quick Start: getting-started.md
+    - Environment Variables: environment-variables.md
+  - Guides:
+    - Development Workflow: development.md
+    - Infrastructure & Deployment: infrastructure.md
+    - Observability: observability.md
+    - Troubleshooting: troubleshooting.md
+  - Template:
+    - Syncing Upstream Changes: template-management.md
+  - Reference:
+    - Overview: references/README.md
+    - Bootstrap Setup: references/bootstrap.md
+    - Protection Strategies: references/protection-strategies.md
+    - Deployment Modes: references/deployment.md
+    - CI/CD Workflows: references/cicd.md
+    - Testing Patterns: references/testing.md
+    - Code Quality Tools: references/code-quality.md
+    - Docker Compose: references/docker-compose-workflow.md
+    - Dockerfile Strategy: references/dockerfile-strategy.md
+    - MkDocs Setup: references/mkdocs-setup.md
