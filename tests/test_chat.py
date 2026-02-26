@@ -101,7 +101,10 @@ async def test_handle_chat_message_all_optional_fields_missing(
     # Event gets "Event received" response because no type field
     result = await handle_chat_message(minimal_event, agent_name="dorothea")
 
-    assert result == {"actionResponse": {"type": "NEW_MESSAGE"}, "text": "Event received"}
+    assert result == {
+        "actionResponse": {"type": "NEW_MESSAGE"},
+        "text": "Event received",
+    }
 
     # Verify span was created with only agent.name attribute
     for name, span in mock_tracer.spans:
@@ -152,7 +155,10 @@ async def test_handle_chat_message_non_message_event(
 
     result = await handle_chat_message(event, agent_name="dorothea")
 
-    assert result == {"actionResponse": {"type": "NEW_MESSAGE"}, "text": "Event received"}
+    assert result == {
+        "actionResponse": {"type": "NEW_MESSAGE"},
+        "text": "Event received",
+    }
 
     # Verify span attributes for non-MESSAGE event
     assert len(mock_tracer.spans) == 1
