@@ -168,3 +168,13 @@ data "google_cloud_run_v2_service" "app" {
   name     = google_cloud_run_v2_service.app[each.key].name
   location = each.key
 }
+
+# Allow unauthenticated invocations so Google Chat can reach the endpoint
+resource "google_cloud_run_v2_service_iam_member" "public_access" {
+  for_each = local.locations
+  project  = google_cloud_run_v2_service.app[each.key].project
+  location = google_cloud_run_v2_service.app[each.key].location
+  name     = google_cloud_run_v2_service.app[each.key].name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
