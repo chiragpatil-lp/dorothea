@@ -12,6 +12,7 @@ dependencies = [
     "google-adk==1.25.1",
     "google-auth>=2.40.3,<3.0.0",
     "google-cloud-logging>=3.12.1,<4.0.0",
+    "httpx>=0.28.1,<0.29.0",
     "opentelemetry-exporter-gcp-logging>=1.9.0a0,<2.0.0",
     "opentelemetry-exporter-otlp-proto-grpc==1.37.0",
     "opentelemetry-instrumentation-google-genai>=0.4b0,<0.5",
