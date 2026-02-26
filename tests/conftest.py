@@ -65,7 +65,9 @@ def pytest_configure(config: pytest.Config) -> None:
     os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
     os.environ["AGENT_NAME"] = "test-agent"
     os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = "true"
-    os.environ["AGENT_ENGINE"] = "projects/test-project/locations/us-central1/reasoningEngines/test-engine"
+    os.environ["AGENT_ENGINE"] = (
+        "projects/test-project/locations/us-central1/reasoningEngines/test-engine"
+    )
 
 
 # ADK Callback Mock Objects for testing callbacks
