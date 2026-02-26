@@ -44,13 +44,20 @@ def test_webhook_route_success(
     """Test webhook route with successful MESSAGE event."""
     # Mock the handle_chat_message function
     mock_handle = mocker.patch(
-        "dorothea.chat.handle_chat_message", return_value={"text": "Success response"}
+        "dorothea.chat.handle_chat_message",
+        return_value={
+            "actionResponse": {"type": "NEW_MESSAGE"},
+            "text": "Success response",
+        },
     )
 
     response = client.post("/chat/webhook", json=chat_message_event)
 
     assert response.status_code == 200
-    assert response.json() == {"text": "Success response"}
+    assert response.json() == {
+        "actionResponse": {"type": "NEW_MESSAGE"},
+        "text": "Success response",
+    }
     mock_handle.assert_called_once()
 
 
@@ -63,13 +70,19 @@ def test_webhook_route_reset_command(
     # Mock handle_reset_command
     mock_reset = mocker.patch(
         "dorothea.chat.handle_reset_command",
-        return_value={"text": "Conversation reset"},
+        return_value={
+            "actionResponse": {"type": "NEW_MESSAGE"},
+            "text": "Conversation reset",
+        },
     )
 
     response = client.post("/chat/webhook", json=reset_command_event)
 
     assert response.status_code == 200
-    assert response.json() == {"text": "Conversation reset"}
+    assert response.json() == {
+        "actionResponse": {"type": "NEW_MESSAGE"},
+        "text": "Conversation reset",
+    }
     mock_reset.assert_called_once()
 
 
@@ -87,13 +100,19 @@ def test_webhook_route_reset_command_case_insensitive(
     # Mock handle_reset_command
     mock_reset = mocker.patch(
         "dorothea.chat.handle_reset_command",
-        return_value={"text": "Conversation reset"},
+        return_value={
+            "actionResponse": {"type": "NEW_MESSAGE"},
+            "text": "Conversation reset",
+        },
     )
 
     response = client.post("/chat/webhook", json=reset_event)
 
     assert response.status_code == 200
-    assert response.json() == {"text": "Conversation reset"}
+    assert response.json() == {
+        "actionResponse": {"type": "NEW_MESSAGE"},
+        "text": "Conversation reset",
+    }
     mock_reset.assert_called_once()
 
 
@@ -104,4 +123,7 @@ def test_webhook_route_non_message_event(client: TestClient) -> None:
     response = client.post("/chat/webhook", json=event)
 
     assert response.status_code == 200
-    assert response.json() == {"text": "Event received"}
+    assert response.json() == {
+        "actionResponse": {"type": "NEW_MESSAGE"},
+        "text": "Event received",
+    }

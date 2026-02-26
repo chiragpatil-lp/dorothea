@@ -21,6 +21,7 @@ Pattern:
 
 import json
 import logging
+from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, Request
@@ -47,7 +48,7 @@ def get_agent_name() -> str:
     return env.agent_name
 
 
-async def handle_chat_message(event: dict, agent_name: str) -> dict[str, str]:
+async def handle_chat_message(event: dict, agent_name: str) -> dict[str, Any]:
     """Handle Google Chat MESSAGE events with per-user session management.
 
     Framework-agnostic business logic that:
@@ -94,7 +95,10 @@ async def handle_chat_message(event: dict, agent_name: str) -> dict[str, str]:
             if event.get("type") != "MESSAGE":
                 span.set_attribute("chat.event.handled", False)
                 span.set_attribute("chat.response.type", "acknowledgment")
-                return {"text": "Event received"}
+                return {
+                    "actionResponse": {"type": "NEW_MESSAGE"},
+                    "text": "Event received",
+                }
 
             # Extract message details
             user_message = event["message"]["text"]
@@ -121,10 +125,11 @@ async def handle_chat_message(event: dict, agent_name: str) -> dict[str, str]:
                 span.set_status(trace.Status(trace.StatusCode.ERROR, error_msg))
                 span.record_exception(ValueError(error_msg))
                 return {
+                    "actionResponse": {"type": "NEW_MESSAGE"},
                     "text": (
                         "Sorry, the agent is not properly configured for "
                         "session management."
-                    )
+                    ),
                 }
 
             # Session management with nested span
@@ -191,29 +196,36 @@ async def handle_chat_message(event: dict, agent_name: str) -> dict[str, str]:
 
             logger.info(f"Returning response: {response_text[:100]}...")
 
-            return {"text": response_text}
+            return {"actionResponse": {"type": "NEW_MESSAGE"}, "text": response_text}
 
         except httpx.TimeoutException as e:
             logger.error("Agent execution timeout", exc_info=True)
             span.set_status(trace.Status(trace.StatusCode.ERROR, "timeout"))
             span.record_exception(e)
             return {
+                "actionResponse": {"type": "NEW_MESSAGE"},
                 "text": (
                     "⏱️ Request timed out. Please try a simpler query or "
                     "ask me to check fewer timecards."
-                )
+                ),
             }
         except httpx.HTTPStatusError as e:
             logger.error(f"Agent HTTP error: {e}", exc_info=True)
             span.set_status(trace.Status(trace.StatusCode.ERROR, "http_error"))
             span.record_exception(e)
             span.set_attribute("http.status_code", e.response.status_code)
-            return {"text": "Sorry, the agent encountered an error. Please try again."}
+            return {
+                "actionResponse": {"type": "NEW_MESSAGE"},
+                "text": "Sorry, the agent encountered an error. Please try again.",
+            }
         except Exception as e:
             logger.error(f"Chat webhook error: {e}", exc_info=True)
             span.set_status(trace.Status(trace.StatusCode.ERROR, "unknown"))
             span.record_exception(e)
-            return {"text": "Sorry, I encountered an error processing your request."}
+            return {
+                "actionResponse": {"type": "NEW_MESSAGE"},
+                "text": "Sorry, I encountered an error processing your request.",
+            }
 
 
 def extract_agent_response(events: list[dict]) -> str:
@@ -247,7 +259,7 @@ def extract_agent_response(events: list[dict]) -> str:
     return "I processed your request but didn't generate a response."
 
 
-async def handle_reset_command(event: dict, agent_name: str) -> dict[str, str]:
+async def handle_reset_command(event: dict, agent_name: str) -> dict[str, Any]:
     """Handle /reset command to clear user's conversation history.
 
     Deletes all ADK sessions for the Google Chat user, allowing them to start
@@ -309,15 +321,17 @@ async def handle_reset_command(event: dict, agent_name: str) -> dict[str, str]:
             if count > 0:
                 logger.info(f"Deleted {count} session(s) for user {chat_user_name}")
                 return {
+                    "actionResponse": {"type": "NEW_MESSAGE"},
                     "text": (
                         "✨ OK, let's start from the beginning! "
                         "Your conversation history has been reset."
-                    )
+                    ),
                 }
             else:
                 logger.info(f"No sessions found for user {chat_user_name}")
                 return {
-                    "text": "You don't have any active conversation history to reset."
+                    "actionResponse": {"type": "NEW_MESSAGE"},
+                    "text": "You don't have any active conversation history to reset.",
                 }
 
         except Exception as e:
@@ -325,7 +339,8 @@ async def handle_reset_command(event: dict, agent_name: str) -> dict[str, str]:
             span.set_status(trace.Status(trace.StatusCode.ERROR, "reset_failed"))
             span.record_exception(e)
             return {
-                "text": "Sorry, I encountered an error resetting your conversation."
+                "actionResponse": {"type": "NEW_MESSAGE"},
+                "text": "Sorry, I encountered an error resetting your conversation.",
             }
 
 
@@ -333,7 +348,7 @@ async def handle_reset_command(event: dict, agent_name: str) -> dict[str, str]:
 async def webhook(
     request: Request,
     agent_name: str = Depends(get_agent_name),
-) -> dict[str, str]:
+) -> dict[str, Any]:
     """Google Chat webhook endpoint.
 
     Receives Google Chat MESSAGE events via HTTP POST, detects /reset commands,
