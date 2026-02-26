@@ -16,7 +16,7 @@ from conftest import (
 )
 from pytest_mock import MockerFixture
 
-from agent_foundation.callbacks import LoggingCallbacks
+from dorothea.callbacks import LoggingCallbacks
 
 # Note: Custom mock classes (conftest.py) use duck typing to match ADK interfaces.
 
@@ -38,7 +38,7 @@ class TestLoggerInjection:
         callbacks = LoggingCallbacks()
 
         assert callbacks.logger is not None
-        assert callbacks.logger.name == "agent_foundation.callbacks"
+        assert callbacks.logger.name == "dorothea.callbacks"
 
     def test_logging_callbacks_custom_logger(
         self, custom_logger: logging.Logger

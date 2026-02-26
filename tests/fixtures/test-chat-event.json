@@ -1,0 +1,34 @@
+{
+  "type": "MESSAGE",
+  "eventTime": "2026-02-03T19:45:49.123456Z",
+  "message": {
+    "name": "spaces/AAAAAAAAAAA/messages/BBBBBBBBBBB",
+    "sender": {
+      "name": "users/123456789",
+      "displayName": "Test User",
+      "avatarUrl": "https://lh3.googleusercontent.com/a/default-user",
+      "email": "test@example.com",
+      "type": "HUMAN"
+    },
+    "createTime": "2026-02-03T19:45:49.123456Z",
+    "text": "Show me my timecards for this week",
+    "thread": {
+      "name": "spaces/AAAAAAAAAAA/threads/CCCCCCCCCCC"
+    },
+    "space": {
+      "name": "spaces/AAAAAAAAAAA",
+      "type": "DM",
+      "singleUserBotDm": true
+    }
+  },
+  "user": {
+    "name": "users/123456789",
+    "displayName": "Test User",
+    "avatarUrl": "https://lh3.googleusercontent.com/a/default-user",
+    "email": "test@example.com"
+  },
+  "space": {
+    "name": "spaces/AAAAAAAAAAA",
+    "type": "DM"
+  }
+}

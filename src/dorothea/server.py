@@ -15,6 +15,7 @@ import uvicorn
 from fastapi import FastAPI
 from google.adk.cli.fast_api import get_fast_api_app
 
+from .chat import chat_router
 from .utils import (
     ServerEnv,
     configure_otel_resource,
@@ -55,6 +56,10 @@ async def health() -> dict[str, str]:
         dict with status key indicating service health
     """
     return {"status": "ok"}
+
+
+# Include Google Chat router
+app.include_router(chat_router)
 
 
 def main() -> None:

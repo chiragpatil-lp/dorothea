@@ -36,7 +36,7 @@ Built for teams who need to move beyond prototypes and ship production AI agents
 
 ## Syncing Upstream Changes
 
-- [Template Management](template-management.md) - Syncing upstream agent-foundation changes
+- [Template Management](template-management.md) - Syncing upstream dorothea changes
 
 ## References
 

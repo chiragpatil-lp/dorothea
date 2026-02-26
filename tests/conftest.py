@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import functools
+from collections.abc import AsyncIterator, Callable
 from typing import Any
 
 import pytest
@@ -16,7 +17,7 @@ def pytest_configure(config: pytest.Config) -> None:
     including pytest-mock. We must use unittest.mock.patch here because:
 
     1. This hook runs before test collection
-    2. Test collection imports test modules, which imports agent_foundation modules
+    2. Test collection imports test modules, which imports dorothea modules
     3. Agent modules may trigger API calls during import (auth, config loading)
     4. pytest-mock's mocker/session_mocker fixtures aren't available until AFTER
        test collection completes
@@ -64,6 +65,9 @@ def pytest_configure(config: pytest.Config) -> None:
     os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
     os.environ["AGENT_NAME"] = "test-agent"
     os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = "true"
+    os.environ["AGENT_ENGINE"] = (
+        "projects/test-project/locations/us-central1/reasoningEngines/test-engine"
+    )
 
 
 # ADK Callback Mock Objects for testing callbacks
@@ -459,7 +463,7 @@ def mock_load_dotenv(mocker: MockerFixture) -> MockType:
     Returns:
         Mock object for load_dotenv function.
     """
-    return mocker.patch("agent_foundation.utils.config.load_dotenv")
+    return mocker.patch("dorothea.utils.config.load_dotenv")
 
 
 @pytest.fixture
@@ -492,3 +496,490 @@ def mock_print_config(mocker: MockerFixture) -> Callable[[type], MockType]:
         return mocker.patch.object(model_class, "print_config", autospec=True)
 
     return _mock_print_config
+
+
+# Google Chat fixtures
+@pytest.fixture
+def chat_message_event() -> dict[str, Any]:
+    """Sample Google Chat MESSAGE event with realistic content."""
+    return {
+        "type": "MESSAGE",
+        "message": {
+            "text": "Show me my timecards for this week",
+            "sender": {"displayName": "Test User"},
+            "space": {"name": "spaces/TEST123"},
+            "thread": {"name": "spaces/TEST123/threads/THREAD1"},
+        },
+        "user": {"name": "users/TEST_USER", "displayName": "Test User"},
+        "space": {"name": "spaces/TEST123", "type": "DM"},
+    }
+
+
+@pytest.fixture
+def simple_message_event() -> dict[str, Any]:
+    """Simple Google Chat MESSAGE event for error testing.
+
+    Minimal event structure used in tests that focus on error handling
+    rather than message content.
+    """
+    return {
+        "type": "MESSAGE",
+        "message": {"text": "test"},
+        "user": {"name": "users/TEST", "displayName": "Test"},
+        "space": {"name": "spaces/TEST", "type": "DM"},
+    }
+
+
+@pytest.fixture
+def reset_command_event() -> dict[str, Any]:
+    """Google Chat MESSAGE event with /reset command.
+
+    Used to test session reset functionality across unit and integration tests.
+    """
+    return {
+        "type": "MESSAGE",
+        "message": {"text": "/reset"},
+        "user": {"name": "users/TEST_USER", "displayName": "Test User"},
+        "space": {"name": "spaces/TEST", "type": "DM"},
+    }
+
+
+@pytest.fixture
+def adk_sse_events() -> list[dict[str, Any]]:
+    """Sample SSE event stream from ADK /run_sse endpoint."""
+    return [
+        {
+            "type": "message",
+            "content": {
+                "parts": [{"text": "Querying Salesforce for your timecards..."}]
+            },
+        },
+        {
+            "type": "message",
+            "content": {"parts": [{"text": "Found 3 timecards for this week."}]},
+        },
+        {"type": "end"},
+    ]
+
+
+class MockHttpxStreamResponse:
+    """Mock httpx streaming response for SSE testing.
+
+    Mimics the behavior of httpx.Response when used with client.stream().
+    Supports async context manager protocol and aiter_lines() for SSE parsing.
+    """
+
+    def __init__(self, sse_lines: list[str]) -> None:
+        """Initialize mock stream response with SSE lines.
+
+        Args:
+            sse_lines: List of SSE-formatted lines to yield from aiter_lines()
+        """
+        self._sse_lines = sse_lines
+
+    async def aiter_lines(self) -> AsyncIterator[str]:
+        """Async iterator yielding SSE lines.
+
+        Mimics httpx.Response.aiter_lines() for Server-Sent Events parsing.
+
+        Yields:
+            SSE-formatted lines (e.g., "data: {...}", ": comment", "event: type")
+        """
+        for line in self._sse_lines:
+            yield line
+
+    async def __aenter__(self) -> MockHttpxStreamResponse:
+        """Async context manager entry.
+
+        Returns:
+            Self (the mock response object)
+        """
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        """Async context manager exit.
+
+        Args:
+            *args: Exception info (exc_type, exc_val, exc_tb)
+        """
+        return None
+
+
+class MockHttpxClient:
+    """Mock httpx.AsyncClient for testing SSE streaming.
+
+    Mimics httpx.AsyncClient behavior with support for:
+    - Async context manager protocol
+    - stream() method that returns async context manager
+    - Exception raising for error cases
+
+    This explicit class-based approach is preferred over manually assigning
+    __aenter__/__aexit__ to AsyncMock objects, following the same pattern
+    as other test mocks (MockState, MockContent, etc.).
+    """
+
+    def __init__(
+        self, sse_lines: list[str] | None = None, exception: Exception | None = None
+    ) -> None:
+        """Initialize mock client with controlled behavior.
+
+        Args:
+            sse_lines: SSE lines to return (for success cases)
+            exception: Exception to raise when stream() is called (for error cases)
+        """
+        self._sse_lines = sse_lines or []
+        self._exception = exception
+
+    def stream(self, *args: Any, **kwargs: Any) -> MockHttpxStreamResponse:
+        """Mock stream method that returns async context manager.
+
+        Args:
+            *args: Positional arguments (method, url, etc.) - ignored in mock
+            **kwargs: Keyword arguments (json, timeout, etc.) - ignored in mock
+
+        Returns:
+            MockHttpxStreamResponse that yields SSE lines
+
+        Raises:
+            Exception: The configured exception if set during initialization
+        """
+        if self._exception:
+            raise self._exception
+        return MockHttpxStreamResponse(self._sse_lines)
+
+    async def __aenter__(self) -> MockHttpxClient:
+        """Async context manager entry.
+
+        Returns:
+            Self (the mock client object)
+        """
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        """Async context manager exit.
+
+        Args:
+            *args: Exception info (exc_type, exc_val, exc_tb)
+        """
+        return None
+
+
+@pytest.fixture
+def mock_httpx_client(
+    mocker: MockerFixture,
+) -> Callable[[list[str] | None, Exception | None], None]:
+    """Factory fixture for mocking httpx.AsyncClient with SSE streaming.
+
+    Returns a factory function that creates and patches httpx.AsyncClient with
+    a custom mock class that accurately mimics httpx streaming behavior.
+
+    Usage:
+        # Success case with SSE lines
+        mock_httpx_client(sse_lines=['data: {...}'], exception=None)
+
+        # Error case with exception
+        mock_httpx_client(sse_lines=None, exception=httpx.TimeoutException("Timeout"))
+
+    Args:
+        sse_lines: Optional list of SSE lines to yield from aiter_lines()
+        exception: Optional exception to raise when stream() is called
+
+    Returns:
+        Factory function that creates and patches httpx.AsyncClient
+    """
+
+    def _create_and_patch(
+        sse_lines: list[str] | None = None, exception: Exception | None = None
+    ) -> None:
+        """Create and patch httpx.AsyncClient with specified behavior.
+
+        Args:
+            sse_lines: SSE lines to return (for success cases)
+            exception: Exception to raise (for error cases)
+        """
+        mock_client = MockHttpxClient(sse_lines=sse_lines, exception=exception)
+        mocker.patch("dorothea.chat.httpx.AsyncClient", return_value=mock_client)
+
+    return _create_and_patch
+
+
+# Session management fixtures
+@pytest.fixture
+def mock_session(mocker: MockerFixture) -> Callable[[str], MockType]:
+    """Factory fixture for creating mock Session objects.
+
+    Returns:
+        Function that creates a mock session with specified ID
+    """
+
+    def _create_session(session_id: str) -> MockType:
+        """Create mock session with ID.
+
+        Args:
+            session_id: Session ID to assign
+
+        Returns:
+            Mock session object with id attribute
+        """
+        session = mocker.Mock()
+        session.id = session_id
+        return session
+
+    return _create_session
+
+
+@pytest.fixture
+def mock_list_sessions_response(
+    mocker: MockerFixture,
+) -> Callable[[list[MockType]], MockType]:
+    """Factory fixture for creating mock ListSessionsResponse objects.
+
+    Returns:
+        Function that creates a mock response with specified sessions
+    """
+
+    def _create_response(sessions: list[MockType]) -> MockType:
+        """Create mock ListSessionsResponse.
+
+        Args:
+            sessions: List of mock session objects
+
+        Returns:
+            Mock response object with sessions attribute
+        """
+        response = mocker.Mock()
+        response.sessions = sessions
+        return response
+
+    return _create_response
+
+
+@pytest.fixture
+def mock_session_service(mocker: MockerFixture) -> MockType:
+    """Mock VertexAiSessionService for session management tests.
+
+    Returns:
+        Mock session service with async methods pre-configured as AsyncMock.
+    """
+    service = mocker.Mock()
+    service.list_sessions = mocker.AsyncMock()
+    service.create_session = mocker.AsyncMock()
+    service.delete_session = mocker.AsyncMock()
+    return service  # type: ignore[no-any-return]
+
+
+@pytest.fixture
+def mock_create_session_service(mocker: MockerFixture) -> Callable[..., None]:
+    """Mock create_session_service to prevent real API calls in chat tests.
+
+    Patches dorothea.chat.create_session_service to return a mock session service
+    that returns a test session ID without making API calls.
+
+    Returns:
+        Factory function that creates and patches create_session_service
+    """
+
+    def _create_and_patch(session_id: str = "test-session-123") -> None:
+        """Create and patch create_session_service with specified session ID.
+
+        Args:
+            session_id: Session ID to return from get_or_create_session
+        """
+        # Create mock session object
+        mock_session = mocker.Mock()
+        mock_session.id = session_id
+
+        # Create mock list result
+        mock_list_result = mocker.Mock()
+        mock_list_result.sessions = [mock_session]
+
+        # Create mock session service
+        mock_service = mocker.Mock()
+        mock_service.list_sessions = mocker.AsyncMock(return_value=mock_list_result)
+        mock_service.create_session = mocker.AsyncMock(return_value=mock_session)
+        mock_service.delete_session = mocker.AsyncMock()
+
+        # Patch create_session_service to return mock service
+        mocker.patch("dorothea.chat.create_session_service", return_value=mock_service)
+
+    return _create_and_patch
+
+
+# OpenTelemetry fixtures
+def _require_active_span(method: Callable[..., Any]) -> Callable[..., Any]:
+    """Decorator that raises if span method called after __exit__.
+
+    Args:
+        method: The span method to wrap
+
+    Returns:
+        Wrapped method that checks span lifecycle before executing
+    """
+
+    @functools.wraps(method)
+    def wrapper(self: MockSpan, *args: Any, **kwargs: Any) -> Any:
+        if self._exited:
+            raise RuntimeError("Span accessed after __exit__")
+        return method(self, *args, **kwargs)
+
+    return wrapper
+
+
+class MockSpan:
+    """Mock OpenTelemetry span for testing instrumentation.
+
+    Mimics the behavior of opentelemetry.trace.Span with support for:
+    - Context manager protocol (for use with 'with' statements)
+    - Attribute setting via set_attribute()
+    - Status setting via set_status()
+    - Exception recording via record_exception()
+    - Strict lifecycle enforcement (raises if accessed after __exit__)
+
+    This class-based approach follows the same pattern as MockHttpxClient
+    and other test mocks in this file.
+
+    Strict mode is always enabled to catch bugs where spans are accessed
+    outside their context manager scope, even though real OTel spans don't
+    raise errors. This enforces proper instrumentation patterns.
+    """
+
+    def __init__(self) -> None:
+        """Initialize mock span with tracking for method calls."""
+        self.attributes: dict[str, Any] = {}
+        self.status: Any = None
+        self.exceptions: list[Exception] = []
+        self._exited = False
+
+    @_require_active_span
+    def set_attribute(self, key: str, value: Any) -> None:
+        """Record span attribute.
+
+        Args:
+            key: Attribute name (e.g., "chat.user.id")
+            value: Attribute value
+
+        Raises:
+            RuntimeError: If called after __exit__
+        """
+        self.attributes[key] = value
+
+    @_require_active_span
+    def set_status(self, status: Any) -> None:
+        """Record span status.
+
+        Args:
+            status: Status object (e.g., trace.Status(trace.StatusCode.ERROR, "msg"))
+
+        Raises:
+            RuntimeError: If called after __exit__
+        """
+        self.status = status
+
+    @_require_active_span
+    def record_exception(self, exception: Exception) -> None:
+        """Record exception in span.
+
+        Args:
+            exception: Exception instance to record
+
+        Raises:
+            RuntimeError: If called after __exit__
+        """
+        self.exceptions.append(exception)
+
+    def __enter__(self) -> MockSpan:
+        """Context manager entry.
+
+        Returns:
+            Self (the mock span object)
+        """
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        """Context manager exit.
+
+        Args:
+            *args: Exception info (exc_type, exc_val, exc_tb)
+        """
+        self._exited = True
+        return None
+
+
+class MockTracer:
+    """Mock OpenTelemetry tracer for testing instrumentation.
+
+    Mimics the behavior of opentelemetry.trace.Tracer with support for:
+    - start_as_current_span() that returns context manager
+    - Tracking of created spans for test assertions
+    - Strict lifecycle enforcement (all spans raise after __exit__)
+
+    This class-based approach is preferred over manually creating nested
+    mocks, following the same pattern as MockHttpxClient and other mocks.
+
+    All created spans enforce proper context manager usage by raising
+    RuntimeError if accessed after __exit__. This catches bugs even though
+    real OTel spans don't raise errors.
+    """
+
+    def __init__(self) -> None:
+        """Initialize mock tracer with span tracking."""
+        self.spans: list[tuple[str, MockSpan]] = []
+
+    def start_as_current_span(self, name: str, **kwargs: Any) -> MockSpan:
+        """Create and track a new span.
+
+        Args:
+            name: Span name (e.g., "handle_chat_message")
+            **kwargs: Optional keyword arguments (e.g., attributes={"key": "value"})
+
+        Returns:
+            MockSpan that can be used as context manager
+        """
+        span = MockSpan()
+        if "attributes" in kwargs:
+            for key, value in kwargs["attributes"].items():
+                span.set_attribute(key, value)
+        self.spans.append((name, span))
+        return span
+
+
+@pytest.fixture
+def mock_tracer(mocker: MockerFixture) -> MockTracer:
+    """Mock OpenTelemetry tracer for testing instrumentation.
+
+    Creates MockTracer instance that enforces proper context manager usage.
+    All spans raise RuntimeError if accessed after __exit__, catching bugs
+    where spans are used outside their scope (even though real OTel spans
+    don't raise errors).
+
+    Patches into both chat.py and session.py modules to intercept span
+    creation and attribute setting.
+
+    Usage in tests:
+        def test_something(mock_tracer):
+            # Call function that creates spans
+            result = await handle_chat_message(...)
+
+            # Verify span creation
+            assert len(mock_tracer.spans) == 3
+            span_names = [name for name, _ in mock_tracer.spans]
+            assert "handle_chat_message" in span_names
+
+            # Verify attributes on specific span
+            for name, span in mock_tracer.spans:
+                if name == "handle_chat_message":
+                    assert span.attributes["chat.event.type"] == "MESSAGE"
+                    assert span.attributes["agent.name"] == "dorothea"
+
+            # Verify exception recording
+            for name, span in mock_tracer.spans:
+                if name == "handle_chat_message":
+                    assert len(span.exceptions) > 0
+
+    Returns:
+        MockTracer instance that enforces proper span lifecycle
+    """
+    mock = MockTracer()
+    mocker.patch("dorothea.chat.tracer", mock)
+    mocker.patch("dorothea.session.tracer", mock)
+    return mock

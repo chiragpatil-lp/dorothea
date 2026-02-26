@@ -7,10 +7,6 @@ Guidance for AI agents. **CRITICAL: Update this file when establishing project p
 - **Never commit to main** (branch protection enforced). Workflow: feature branch → PR → merge.
 - **Version bumps:** Update `pyproject.toml` → `uv lock` (both files together required for CI `--locked` to pass).
 
-## Template Initialization (One-Time)
-
-Base template repo. Run `uv run init_template.py --dry-run` (preview) or `uv run init_template.py` (apply). Script docstring contains complete usage/cleanup instructions. After use, delete `init_template.py`, `./.log/init_template_*.md`, README Bootstrap step 0, and this Template Initialization section.
-
 ## Quick Commands
 
 ```bash

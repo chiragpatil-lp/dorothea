@@ -23,7 +23,7 @@ One-time configuration:
 
 ```bash
 # Add template repository as foundation remote
-git remote add foundation https://github.com/your-org/agent-foundation.git
+git remote add foundation https://github.com/your-org/dorothea.git
 git remote -v  # Verify
 
 # Fetch foundation tags to refs/foundation-tags/* (avoids conflicts with local tags)
@@ -168,7 +168,7 @@ Foundation may enhance reusable code patterns. Review diffs and selectively appl
 
 ```bash
 # Review utils patterns (Pydantic validation, OpenTelemetry)
-git diff foundation-tags/$VERSION -- src/agent_foundation/utils/
+git diff foundation-tags/$VERSION -- src/dorothea/utils/
 
 # Review test patterns (pytest fixtures, ADK mocks)
 git diff foundation-tags/$VERSION -- tests/conftest.py
