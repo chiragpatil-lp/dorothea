@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 import httpx
+from conftest import workspace_addon_response
 from pytest_mock import MockerFixture
 
 from dorothea.chat import (
@@ -37,7 +38,7 @@ async def test_handle_chat_message_success(
 
     result = await handle_chat_message(chat_message_event, agent_name="dorothea")
 
-    assert result == {"text": "Found 3."}
+    assert result == workspace_addon_response("Found 3.")
     assert "actionResponse" not in result  # Prevent regression to Apps Script format
 
     # Verify span creation
@@ -73,7 +74,7 @@ async def test_handle_chat_message_minimal_event(
 
     result = await handle_chat_message(minimal_event, agent_name="dorothea")
 
-    assert result == {"text": "Response"}
+    assert result == workspace_addon_response("Response")
 
     # Verify span attributes set correctly even when space.type is missing
     for name, span in mock_tracer.spans:
@@ -109,7 +110,7 @@ async def test_handle_chat_message_all_optional_fields_missing(
     # Event is processed normally even without optional space field
     result = await handle_chat_message(minimal_event, agent_name="dorothea")
 
-    assert result == {"text": "Response"}
+    assert result == workspace_addon_response("Response")
 
     # Verify span was created with only agent.name attribute (space fields missing)
     for name, span in mock_tracer.spans:
@@ -145,7 +146,7 @@ async def test_handle_chat_message_space_without_name(
 
     result = await handle_chat_message(event_space_no_name, agent_name="dorothea")
 
-    assert result == {"text": "Response"}
+    assert result == workspace_addon_response("Response")
 
     # Verify space.type was set but not space.name
     for name, span in mock_tracer.spans:
@@ -163,9 +164,7 @@ async def test_handle_chat_message_invalid_event_format(
 
     result = await handle_chat_message(event, agent_name="dorothea")
 
-    assert result == {
-        "text": "Invalid event format",
-    }
+    assert result == workspace_addon_response("Invalid event format")
 
     # Verify span attributes for invalid event
     assert len(mock_tracer.spans) == 1
@@ -188,7 +187,12 @@ async def test_handle_chat_message_timeout(
 
     result = await handle_chat_message(simple_message_event, agent_name="dorothea")
 
-    assert "timed out" in result["text"].lower()
+    assert (
+        "timed out"
+        in result["hostAppDataAction"]["chatDataAction"]["createMessageAction"][
+            "message"
+        ]["text"].lower()
+    )
 
     # Verify error was recorded in span
     for name, span in mock_tracer.spans:
@@ -216,7 +220,12 @@ async def test_handle_chat_message_http_error(
 
     result = await handle_chat_message(simple_message_event, agent_name="dorothea")
 
-    assert "error" in result["text"].lower()
+    assert (
+        "error"
+        in result["hostAppDataAction"]["chatDataAction"]["createMessageAction"][
+            "message"
+        ]["text"].lower()
+    )
 
     # Verify error was recorded with HTTP status code
     for name, span in mock_tracer.spans:
@@ -238,7 +247,12 @@ async def test_handle_chat_message_generic_exception(
 
     result = await handle_chat_message(simple_message_event, agent_name="dorothea")
 
-    assert "error" in result["text"].lower()
+    assert (
+        "error"
+        in result["hostAppDataAction"]["chatDataAction"]["createMessageAction"][
+            "message"
+        ]["text"].lower()
+    )
 
     # Verify generic exception was recorded
     for name, span in mock_tracer.spans:
@@ -259,7 +273,12 @@ async def test_handle_chat_message_no_agent_engine(
 
     result = await handle_chat_message(simple_message_event, agent_name="dorothea")
 
-    assert "not properly configured" in result["text"]
+    assert (
+        "not properly configured"
+        in result["hostAppDataAction"]["chatDataAction"]["createMessageAction"][
+            "message"
+        ]["text"]
+    )
 
     # Verify error status and exception recording
     for name, span in mock_tracer.spans:
@@ -288,7 +307,7 @@ async def test_handle_chat_message_with_non_data_sse_lines(
 
     result = await handle_chat_message(chat_message_event, agent_name="dorothea")
 
-    assert result == {"text": "Response"}
+    assert result == workspace_addon_response("Response")
 
     # Verify spans were created
     span_names = [name for name, _ in mock_tracer.spans]
@@ -314,7 +333,7 @@ async def test_handle_chat_message_with_parts_without_text(
 
     result = await handle_chat_message(chat_message_event, agent_name="dorothea")
 
-    assert result == {"text": "Final"}
+    assert result == workspace_addon_response("Final")
 
     # Verify event count in ADK span
     for name, span in mock_tracer.spans:
@@ -427,8 +446,18 @@ async def test_handle_reset_command_success(
 
     result = await handle_reset_command(reset_command_event, agent_name="dorothea")
 
-    assert "start from the beginning" in result["text"]
-    assert "reset" in result["text"].lower()
+    assert (
+        "start from the beginning"
+        in result["hostAppDataAction"]["chatDataAction"]["createMessageAction"][
+            "message"
+        ]["text"]
+    )
+    assert (
+        "reset"
+        in result["hostAppDataAction"]["chatDataAction"]["createMessageAction"][
+            "message"
+        ]["text"].lower()
+    )
     mock_service.delete_session.assert_called_once()
 
     # Verify span creation and attributes
@@ -461,7 +490,12 @@ async def test_handle_reset_command_no_sessions(
 
     result = await handle_reset_command(reset_command_event, agent_name="dorothea")
 
-    assert "don't have any active conversation" in result["text"]
+    assert (
+        "don't have any active conversation"
+        in result["hostAppDataAction"]["chatDataAction"]["createMessageAction"][
+            "message"
+        ]["text"]
+    )
 
     # Verify deleted count is 0
     for name, span in mock_tracer.spans:
@@ -481,7 +515,12 @@ async def test_handle_reset_command_no_agent_engine(
 
     result = await handle_reset_command(reset_command_event, agent_name="dorothea")
 
-    assert "not properly configured" in result["text"]
+    assert (
+        "not properly configured"
+        in result["hostAppDataAction"]["chatDataAction"]["createMessageAction"][
+            "message"
+        ]["text"]
+    )
 
     # Verify error was recorded
     for name, span in mock_tracer.spans:
@@ -505,7 +544,12 @@ async def test_handle_reset_command_generic_exception(
 
     result = await handle_reset_command(reset_command_event, agent_name="dorothea")
 
-    assert "encountered an error" in result["text"]
+    assert (
+        "encountered an error"
+        in result["hostAppDataAction"]["chatDataAction"]["createMessageAction"][
+            "message"
+        ]["text"]
+    )
 
     # Verify exception was recorded
     for name, span in mock_tracer.spans:

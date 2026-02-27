@@ -36,6 +36,42 @@ tracer = trace.get_tracer(__name__)
 chat_router = APIRouter(prefix="/chat", tags=["Google Chat Integration"])
 
 
+def create_workspace_addon_response(text: str) -> dict[str, Any]:
+    """Wrap text message in Google Workspace Add-on response format.
+
+    Google Workspace Add-ons that extend Google Chat must return actions
+    instead of plain Message objects. This function wraps a simple text
+    message in the required CreateMessageAction format.
+
+    Args:
+        text: The text message to send to Google Chat
+
+    Returns:
+        Dict formatted as Workspace Add-on action response:
+        {
+            "hostAppDataAction": {
+                "chatDataAction": {
+                    "createMessageAction": {
+                        "message": {"text": text}
+                    }
+                }
+            }
+        }
+
+    References:
+        - https://developers.google.com/workspace/add-ons/chat/send-messages
+        - https://developers.google.com/workspace/add-ons/chat/convert
+    """
+    print(f"🟢 Creating Workspace Add-on response with text: {text[:100]}...")
+    response = {
+        "hostAppDataAction": {
+            "chatDataAction": {"createMessageAction": {"message": {"text": text}}}
+        }
+    }
+    print("🟢 Workspace Add-on response structure created successfully")
+    return response
+
+
 def get_agent_name() -> str:
     """Dependency to inject agent name from server environment.
 
@@ -66,11 +102,16 @@ async def handle_chat_message(event: dict, agent_name: str) -> dict[str, Any]:
         agent_name: Name of the ADK agent (e.g., "dorothea")
 
     Returns:
-        Dict with "text" key containing the response message for Google Chat.
-        Format: {"text": "response message"}
-
-        Note: HTTP Endpoint URL Chat apps (vs Apps Script) require direct JSON
-        responses. The actionResponse wrapper causes instant rejection by Google Chat.
+        Dict in Workspace Add-on action format:
+        {
+            "hostAppDataAction": {
+                "chatDataAction": {
+                    "createMessageAction": {
+                        "message": {"text": "response message"}
+                    }
+                }
+            }
+        }
 
     Raises:
         httpx.TimeoutException: If agent execution exceeds 30 seconds
@@ -100,9 +141,7 @@ async def handle_chat_message(event: dict, agent_name: str) -> dict[str, Any]:
                 logger.warning("Invalid event: missing 'chat' field")
                 span.set_attribute("chat.event.handled", False)
                 span.set_attribute("chat.response.type", "error")
-                return {
-                    "text": "Invalid event format",
-                }
+                return create_workspace_addon_response("Invalid event format")
 
             logger.info("Received Google Chat message event")
 
@@ -134,12 +173,10 @@ async def handle_chat_message(event: dict, agent_name: str) -> dict[str, Any]:
                 error_msg = "AGENT_ENGINE not configured"
                 span.set_status(trace.Status(trace.StatusCode.ERROR, error_msg))
                 span.record_exception(ValueError(error_msg))
-                return {
-                    "text": (
-                        "Sorry, the agent is not properly configured for "
-                        "session management."
-                    ),
-                }
+                return create_workspace_addon_response(
+                    "Sorry, the agent is not properly configured for "
+                    "session management."
+                )
 
             # Session management with nested span
             with tracer.start_as_current_span("session.get_or_create") as session_span:
@@ -199,41 +236,49 @@ async def handle_chat_message(event: dict, agent_name: str) -> dict[str, Any]:
                     adk_span.set_attribute("adk.events.count", len(events))
 
             # Extract final response
+            print(f"🔷 Extracting agent response from {len(events)} events")
             response_text = extract_agent_response(events)
+            print(
+                f"🔵 Extracted response text ({len(response_text)} chars): "
+                f"{response_text[:100]}..."
+            )
             span.set_attribute("chat.response.length", len(response_text))
             span.set_attribute("chat.response.truncated", len(response_text) > 100)
 
             logger.info(f"Returning response: {response_text[:100]}...")
-            print(f"🔵 Extracted response text: {response_text}")
-            response_dict = {"text": response_text}
-            print(f"🔵 Returning to Google Chat: {response_dict}")
+            response_dict = create_workspace_addon_response(response_text)
+            print(f"🔵 Final response dict keys: {list(response_dict.keys())}")
             return response_dict
 
         except httpx.TimeoutException as e:
+            print(f"🔴 Timeout exception caught: {e}")
             logger.error("Agent execution timeout", exc_info=True)
             span.set_status(trace.Status(trace.StatusCode.ERROR, "timeout"))
             span.record_exception(e)
-            return {
-                "text": (
-                    "⏱️ Request timed out. Please try a simpler query or "
-                    "ask me to check fewer timecards."
-                ),
-            }
+            return create_workspace_addon_response(
+                "⏱️ Request timed out. Please try a simpler query or "
+                "ask me to check fewer timecards."
+            )
         except httpx.HTTPStatusError as e:
+            print(f"🔴 HTTP error from ADK: {e.response.status_code} - {e}")
             logger.error(f"Agent HTTP error: {e}", exc_info=True)
             span.set_status(trace.Status(trace.StatusCode.ERROR, "http_error"))
             span.record_exception(e)
             span.set_attribute("http.status_code", e.response.status_code)
-            return {
-                "text": "Sorry, the agent encountered an error. Please try again.",
-            }
+            return create_workspace_addon_response(
+                "Sorry, the agent encountered an error. Please try again."
+            )
         except Exception as e:
+            print(
+                f"🔴 Unexpected exception in handle_chat_message: "
+                f"{type(e).__name__}: {e}"
+            )
             logger.error(f"Chat webhook error: {e}", exc_info=True)
             span.set_status(trace.Status(trace.StatusCode.ERROR, "unknown"))
             span.record_exception(e)
-            return {
-                "text": "Sorry, I encountered an error processing your request.",
-            }
+            return create_workspace_addon_response(
+                "Sorry, I encountered an error processing your request."
+            )
 
 
 def extract_agent_response(events: list[dict]) -> str:
@@ -278,7 +323,7 @@ async def handle_reset_command(event: dict, agent_name: str) -> dict[str, Any]:
         agent_name: Name of the ADK agent (for logging)
 
     Returns:
-        Dict with success message for Google Chat
+        Dict in Workspace Add-on action format with success/error message
     """
     with tracer.start_as_current_span(
         "handle_reset_command",
@@ -305,12 +350,9 @@ async def handle_reset_command(event: dict, agent_name: str) -> dict[str, Any]:
             error_msg = "AGENT_ENGINE not configured"
             span.set_status(trace.Status(trace.StatusCode.ERROR, error_msg))
             span.record_exception(ValueError(error_msg))
-            return {
-                "text": (
-                    "Sorry, the agent is not properly configured for "
-                    "session management."
-                )
-            }
+            return create_workspace_addon_response(
+                "Sorry, the agent is not properly configured for session management."
+            )
 
         try:
             with tracer.start_as_current_span("session.delete_all") as delete_span:
@@ -329,26 +371,26 @@ async def handle_reset_command(event: dict, agent_name: str) -> dict[str, Any]:
             span.set_attribute("sessions.deleted_count", count)
 
             if count > 0:
+                print(f"🟢 Deleted {count} session(s) for user {user_id}")
                 logger.info(f"Deleted {count} session(s) for user {chat_user_name}")
-                return {
-                    "text": (
-                        "✨ OK, let's start from the beginning! "
-                        "Your conversation history has been reset."
-                    ),
-                }
+                return create_workspace_addon_response(
+                    "✨ OK, let's start from the beginning! "
+                    "Your conversation history has been reset."
+                )
             else:
+                print(f"🔷 No sessions found for user {user_id}")
                 logger.info(f"No sessions found for user {chat_user_name}")
-                return {
-                    "text": "You don't have any active conversation history to reset.",
-                }
+                return create_workspace_addon_response(
+                    "You don't have any active conversation history to reset."
+                )
 
         except Exception as e:
             logger.error(f"Failed to reset sessions: {e}", exc_info=True)
             span.set_status(trace.Status(trace.StatusCode.ERROR, "reset_failed"))
             span.record_exception(e)
-            return {
-                "text": "Sorry, I encountered an error resetting your conversation.",
-            }
+            return create_workspace_addon_response(
+                "Sorry, I encountered an error resetting your conversation."
+            )
 
 
 @chat_router.post("/webhook")
@@ -366,7 +408,7 @@ async def webhook(
         agent_name: Name of the ADK agent (injected via dependency)
 
     Returns:
-        dict with "text" key containing response for Google Chat
+        Dict in Workspace Add-on action format with response message
     """
     event = await request.json()
 
@@ -377,7 +419,7 @@ async def webhook(
     if not event.get("chat"):
         logger.warning("Invalid event: missing 'chat' field")
         print("🔴 Event missing 'chat' field, returning error")
-        return {"text": "Invalid event format"}
+        return create_workspace_addon_response("Invalid event format")
 
     # Extract message text from Workspace Add-on format
     try:
@@ -388,7 +430,7 @@ async def webhook(
     except KeyError as e:
         logger.error("Failed to extract message text from event")
         print(f"🔴 KeyError extracting message: {e}")
-        return {"text": "Error processing message"}
+        return create_workspace_addon_response("Error processing message")
 
     # Detect /reset command
     if message_text == "/reset":
