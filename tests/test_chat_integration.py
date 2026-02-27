@@ -46,7 +46,6 @@ def test_webhook_route_success(
     mock_handle = mocker.patch(
         "dorothea.chat.handle_chat_message",
         return_value={
-            "actionResponse": {"type": "NEW_MESSAGE"},
             "text": "Success response",
         },
     )
@@ -55,7 +54,6 @@ def test_webhook_route_success(
 
     assert response.status_code == 200
     assert response.json() == {
-        "actionResponse": {"type": "NEW_MESSAGE"},
         "text": "Success response",
     }
     mock_handle.assert_called_once()
@@ -71,7 +69,6 @@ def test_webhook_route_reset_command(
     mock_reset = mocker.patch(
         "dorothea.chat.handle_reset_command",
         return_value={
-            "actionResponse": {"type": "NEW_MESSAGE"},
             "text": "Conversation reset",
         },
     )
@@ -80,7 +77,6 @@ def test_webhook_route_reset_command(
 
     assert response.status_code == 200
     assert response.json() == {
-        "actionResponse": {"type": "NEW_MESSAGE"},
         "text": "Conversation reset",
     }
     mock_reset.assert_called_once()
@@ -101,7 +97,6 @@ def test_webhook_route_reset_command_case_insensitive(
     mock_reset = mocker.patch(
         "dorothea.chat.handle_reset_command",
         return_value={
-            "actionResponse": {"type": "NEW_MESSAGE"},
             "text": "Conversation reset",
         },
     )
@@ -110,7 +105,6 @@ def test_webhook_route_reset_command_case_insensitive(
 
     assert response.status_code == 200
     assert response.json() == {
-        "actionResponse": {"type": "NEW_MESSAGE"},
         "text": "Conversation reset",
     }
     mock_reset.assert_called_once()
@@ -124,6 +118,5 @@ def test_webhook_route_non_message_event(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == {
-        "actionResponse": {"type": "NEW_MESSAGE"},
         "text": "Event received",
     }

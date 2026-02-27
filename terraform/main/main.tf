@@ -189,5 +189,5 @@ resource "google_cloud_run_v2_service_iam_member" "chat_invoker" {
   location = data.google_cloud_run_v2_service.app[each.key].location
   name     = data.google_cloud_run_v2_service.app[each.key].name
   role     = "roles/run.invoker"
-  member   = google_project_service_identity.chat.member
+  member   = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-gsuiteaddons.iam.gserviceaccount.com"
 }

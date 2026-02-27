@@ -61,6 +61,6 @@ output "configured_environment_variables" {
 
 
 output "chat_service_agent_email" {
-  description = "Google Chat API Service Agent email address"
-  value       = google_project_service_identity.chat.email
+  description = "Google Chat API Service Agent email address (G Suite Add-ons for HTTP endpoints)"
+  value       = "service-${data.google_project.project.number}@gcp-sa-gsuiteaddons.iam.gserviceaccount.com"
 }
