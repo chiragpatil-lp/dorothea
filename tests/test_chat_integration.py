@@ -90,10 +90,13 @@ def test_webhook_route_reset_command_case_insensitive(
 ) -> None:
     """Test webhook route handles /reset in various cases."""
     reset_event = {
-        "type": "MESSAGE",
-        "message": {"text": "  /RESET  "},  # Uppercase with spaces
-        "user": {"name": "users/TEST_USER", "displayName": "Test User"},
-        "space": {"name": "spaces/TEST", "type": "DM"},
+        "chat": {
+            "user": {"name": "users/TEST_USER", "displayName": "Test User"},
+            "messagePayload": {
+                "message": {"text": "  /RESET  "},  # Uppercase with spaces
+                "space": {"name": "spaces/TEST", "type": "DM"},
+            },
+        }
     }
 
     # Mock handle_reset_command
@@ -113,13 +116,32 @@ def test_webhook_route_reset_command_case_insensitive(
     mock_reset.assert_called_once()
 
 
-def test_webhook_route_non_message_event(client: TestClient) -> None:
-    """Test webhook route with non-MESSAGE event (no mocks for full coverage)."""
+def test_webhook_route_invalid_event_format(client: TestClient) -> None:
+    """Test webhook route with invalid event format (no mocks for full coverage)."""
+    # Event with old simple webhook format (invalid for Workspace Add-on)
     event = {"type": "ADDED_TO_SPACE", "space": {"name": "spaces/TEST"}}
 
     response = client.post("/chat/webhook", json=event)
 
     assert response.status_code == 200
     assert response.json() == {
-        "text": "Event received",
+        "text": "Invalid event format",
+    }
+
+
+def test_webhook_route_malformed_event_structure(client: TestClient) -> None:
+    """Test webhook route with malformed Workspace Add-on event structure."""
+    # Event has "chat" field but missing nested message structure
+    event = {
+        "chat": {
+            "user": {"name": "users/TEST_USER", "displayName": "Test User"},
+            # Missing messagePayload
+        }
+    }
+
+    response = client.post("/chat/webhook", json=event)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "text": "Error processing message",
     }

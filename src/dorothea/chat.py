@@ -61,9 +61,9 @@ async def handle_chat_message(event: dict, agent_name: str) -> dict[str, Any]:
     allowing for progress logging while staying within Chat's 30s timeout.
 
     Args:
-        event: Google Chat event dict with structure:
-               {"type": str, "message": {...}, "user": {...}, "space": {...}}
-        agent_name: Name of the ADK agent (e.g., "agent_foundation")
+        event: Google Chat event dict with Workspace Add-on structure:
+               {"chat": {"user": {...}, "messagePayload": {"message": {...}, ...}}}
+        agent_name: Name of the ADK agent (e.g., "dorothea")
 
     Returns:
         Dict with "text" key containing the response message for Google Chat.
@@ -79,33 +79,41 @@ async def handle_chat_message(event: dict, agent_name: str) -> dict[str, Any]:
     """
     # Build span attributes, excluding None values (OTel doesn't accept None)
     span_attributes = {"agent.name": agent_name}
-    if event_type := event.get("type"):
-        span_attributes["chat.event.type"] = event_type
-    if space := event.get("space"):
+
+    # Extract space info from Workspace Add-on format
+    try:
+        space = event["chat"]["messagePayload"]["space"]
         if space_name := space.get("name"):
             span_attributes["chat.space.name"] = space_name
         if space_type := space.get("type"):
             span_attributes["chat.space.type"] = space_type
+    except (KeyError, TypeError):
+        pass  # Space info is optional for observability
 
     with tracer.start_as_current_span(
         "handle_chat_message",
         attributes=span_attributes,
     ) as span:
         try:
-            logger.info(f"Received Chat event: type={event.get('type')}")
-
-            # Only handle MESSAGE events
-            if event.get("type") != "MESSAGE":
+            # Check for Workspace Add-on event format
+            if not event.get("chat"):
+                logger.warning("Invalid event: missing 'chat' field")
                 span.set_attribute("chat.event.handled", False)
-                span.set_attribute("chat.response.type", "acknowledgment")
+                span.set_attribute("chat.response.type", "error")
                 return {
-                    "text": "Event received",
+                    "text": "Invalid event format",
                 }
 
-            # Extract message details
-            user_message = event["message"]["text"]
-            chat_user_name = event["user"]["name"]  # "users/123456789"
-            user_display_name = event["user"]["displayName"]
+            logger.info("Received Google Chat message event")
+
+            # Extract message details from Workspace Add-on format
+            chat_data = event["chat"]
+            message_payload = chat_data["messagePayload"]
+            message_data = message_payload["message"]
+
+            user_message = message_data["text"]
+            chat_user_name = chat_data["user"]["name"]  # "users/123456789"
+            user_display_name = chat_data["user"]["displayName"]
 
             # Add user context to span
             user_id = GoogleChatSessionManager.extract_user_id(chat_user_name)
@@ -264,7 +272,7 @@ async def handle_reset_command(event: dict, agent_name: str) -> dict[str, Any]:
     fresh conversations without historical context.
 
     Args:
-        event: Google Chat event dict
+        event: Google Chat event dict (Workspace Add-on format)
         agent_name: Name of the ADK agent (for logging)
 
     Returns:
@@ -277,8 +285,10 @@ async def handle_reset_command(event: dict, agent_name: str) -> dict[str, Any]:
             "agent.name": agent_name,
         },
     ) as span:
-        chat_user_name = event["user"]["name"]
-        user_display_name = event["user"]["displayName"]
+        # Extract user info from Workspace Add-on format
+        chat_data = event["chat"]
+        chat_user_name = chat_data["user"]["name"]
+        user_display_name = chat_data["user"]["displayName"]
         user_id = GoogleChatSessionManager.extract_user_id(chat_user_name)
 
         span.set_attribute("chat.user.id", user_id)
@@ -344,10 +354,10 @@ async def webhook(
     request: Request,
     agent_name: str = Depends(get_agent_name),
 ) -> dict[str, Any]:
-    """Google Chat webhook endpoint.
+    """Google Chat webhook endpoint for Workspace Add-on events.
 
-    Receives Google Chat MESSAGE events via HTTP POST, detects /reset commands,
-    and delegates to appropriate handlers.
+    Receives Google Chat events via HTTP POST (Workspace Add-on format),
+    detects /reset commands, and delegates to appropriate handlers.
 
     Args:
         request: FastAPI request object containing Google Chat event
@@ -356,25 +366,27 @@ async def webhook(
     Returns:
         dict with "text" key containing response for Google Chat
     """
-    print("🔴 WEBHOOK CALLED - START")  # DEBUG: Print to stdout
-    print(f"🔴 Agent name: {agent_name}")  # DEBUG
-
     event = await request.json()
-    print(f"🔴 Event parsed: type={event.get('type')}")  # DEBUG
-    print(f"🔴 FULL EVENT: {event}")  # DEBUG: Print full event to stdout
 
-    # DEBUG: Log the full event to diagnose the issue
-    logger.info(
-        f"🔍 DEBUG: Received event type={event.get('type')}, full event={event}"
-    )
+    logger.debug(f"Received Google Chat event: {event}")
+
+    # Validate Workspace Add-on event format
+    if not event.get("chat"):
+        logger.warning("Invalid event: missing 'chat' field")
+        return {"text": "Invalid event format"}
+
+    # Extract message text from Workspace Add-on format
+    try:
+        message_text = (
+            event["chat"]["messagePayload"]["message"]["text"].strip().lower()
+        )
+    except KeyError:
+        logger.error("Failed to extract message text from event")
+        return {"text": "Error processing message"}
 
     # Detect /reset command
-    if event.get("type") == "MESSAGE":
-        print("🔴 Event type is MESSAGE")  # DEBUG
-        message_text = event.get("message", {}).get("text", "").strip().lower()
-        if message_text == "/reset":
-            return await handle_reset_command(event, agent_name)
+    if message_text == "/reset":
+        return await handle_reset_command(event, agent_name)
 
     # Regular message handling
-    print("🔴 Calling handle_chat_message")  # DEBUG
     return await handle_chat_message(event, agent_name)
