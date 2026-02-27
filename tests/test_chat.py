@@ -37,7 +37,8 @@ async def test_handle_chat_message_success(
 
     result = await handle_chat_message(chat_message_event, agent_name="dorothea")
 
-    assert result == {"actionResponse": {"type": "NEW_MESSAGE"}, "text": "Found 3."}
+    assert result == {"text": "Found 3."}
+    assert "actionResponse" not in result  # Prevent regression to Apps Script format
 
     # Verify span creation
     span_names = [name for name, _ in mock_tracer.spans]
@@ -69,7 +70,7 @@ async def test_handle_chat_message_minimal_event(
 
     result = await handle_chat_message(minimal_event, agent_name="dorothea")
 
-    assert result == {"actionResponse": {"type": "NEW_MESSAGE"}, "text": "Response"}
+    assert result == {"text": "Response"}
 
     # Verify span attributes set correctly even when space.type is missing
     for name, span in mock_tracer.spans:
@@ -102,7 +103,6 @@ async def test_handle_chat_message_all_optional_fields_missing(
     result = await handle_chat_message(minimal_event, agent_name="dorothea")
 
     assert result == {
-        "actionResponse": {"type": "NEW_MESSAGE"},
         "text": "Event received",
     }
 
@@ -138,7 +138,7 @@ async def test_handle_chat_message_space_without_name(
 
     result = await handle_chat_message(event_space_no_name, agent_name="dorothea")
 
-    assert result == {"actionResponse": {"type": "NEW_MESSAGE"}, "text": "Response"}
+    assert result == {"text": "Response"}
 
     # Verify space.type was set but not space.name
     for name, span in mock_tracer.spans:
@@ -156,7 +156,6 @@ async def test_handle_chat_message_non_message_event(
     result = await handle_chat_message(event, agent_name="dorothea")
 
     assert result == {
-        "actionResponse": {"type": "NEW_MESSAGE"},
         "text": "Event received",
     }
 
@@ -281,7 +280,7 @@ async def test_handle_chat_message_with_non_data_sse_lines(
 
     result = await handle_chat_message(chat_message_event, agent_name="dorothea")
 
-    assert result == {"actionResponse": {"type": "NEW_MESSAGE"}, "text": "Response"}
+    assert result == {"text": "Response"}
 
     # Verify spans were created
     span_names = [name for name, _ in mock_tracer.spans]
@@ -307,7 +306,7 @@ async def test_handle_chat_message_with_parts_without_text(
 
     result = await handle_chat_message(chat_message_event, agent_name="dorothea")
 
-    assert result == {"actionResponse": {"type": "NEW_MESSAGE"}, "text": "Final"}
+    assert result == {"text": "Final"}
 
     # Verify event count in ADK span
     for name, span in mock_tracer.spans:
