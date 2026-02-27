@@ -6,6 +6,7 @@ from google.adk.agents import LlmAgent
 from google.adk.apps import App
 from google.adk.plugins.global_instruction_plugin import GlobalInstructionPlugin
 from google.adk.plugins.logging_plugin import LoggingPlugin
+from google.adk.tools import google_search
 from google.adk.tools.preload_memory_tool import PreloadMemoryTool
 
 from .callbacks import LoggingCallbacks, add_session_to_memory
@@ -14,8 +15,6 @@ from .prompt import (
     return_global_instruction,
     return_instruction_root,
 )
-
-from google.adk.tools import google_search
 
 logging_callbacks = LoggingCallbacks()
 
