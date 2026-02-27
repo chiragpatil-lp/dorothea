@@ -168,3 +168,26 @@ data "google_cloud_run_v2_service" "app" {
   name     = google_cloud_run_v2_service.app[each.key].name
   location = each.key
 }
+
+
+# ------------------------------------------------------------------------------
+# Google Chat Service Account Setup (Run Invoker)
+# ------------------------------------------------------------------------------
+
+data "google_project" "project" {}
+
+resource "google_project_service_identity" "chat" {
+  provider = google-beta
+
+  project = data.google_project.project.project_id
+  service = "chat.googleapis.com"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "chat_invoker" {
+  for_each = local.locations
+  project  = data.google_cloud_run_v2_service.app[each.key].project
+  location = data.google_cloud_run_v2_service.app[each.key].location
+  name     = data.google_cloud_run_v2_service.app[each.key].name
+  role     = "roles/run.invoker"
+  member   = google_project_service_identity.chat.member
+}
