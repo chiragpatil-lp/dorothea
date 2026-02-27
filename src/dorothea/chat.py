@@ -361,6 +361,7 @@ async def webhook(
 
     event = await request.json()
     print(f"🔴 Event parsed: type={event.get('type')}")  # DEBUG
+    print(f"🔴 FULL EVENT: {event}")  # DEBUG: Print full event to stdout
 
     # DEBUG: Log the full event to diagnose the issue
     logger.info(
