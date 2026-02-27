@@ -53,12 +53,15 @@ async def test_handle_chat_message_minimal_event(
     mock_tracer,
 ) -> None:
     """Test MESSAGE event with minimal/missing optional fields."""
-    # Event with type=MESSAGE, space with name but no type
+    # Event with Workspace Add-on format, space with name but no type
     minimal_event = {
-        "type": "MESSAGE",
-        "message": {"text": "Hello"},
-        "user": {"name": "users/TEST_USER", "displayName": "Test User"},
-        "space": {"name": "spaces/test-space"},  # Has name but no type
+        "chat": {
+            "user": {"name": "users/TEST_USER", "displayName": "Test User"},
+            "messagePayload": {
+                "message": {"text": "Hello"},
+                "space": {"name": "spaces/test-space"},  # Has name but no type
+            },
+        }
     }
 
     sse_lines = [
@@ -85,11 +88,15 @@ async def test_handle_chat_message_all_optional_fields_missing(
     mock_tracer,
 ) -> None:
     """Test MESSAGE event with all optional span attribute fields missing."""
-    # Event with no type, no space, triggering all branch coverage gaps
+    # Event with Workspace Add-on format but no space field
     minimal_event = {
-        "message": {"text": "Hello"},
-        "user": {"name": "users/TEST_USER", "displayName": "Test User"},
-        # No type field, no space field
+        "chat": {
+            "user": {"name": "users/TEST_USER", "displayName": "Test User"},
+            "messagePayload": {
+                "message": {"text": "Hello"},
+                # No space field
+            },
+        }
     }
 
     sse_lines = [
@@ -99,18 +106,15 @@ async def test_handle_chat_message_all_optional_fields_missing(
     mock_create_session_service(session_id="test-session-all-missing")
     mock_httpx_client(sse_lines=sse_lines, exception=None)
 
-    # Event gets "Event received" response because no type field
+    # Event is processed normally even without optional space field
     result = await handle_chat_message(minimal_event, agent_name="dorothea")
 
-    assert result == {
-        "text": "Event received",
-    }
+    assert result == {"text": "Response"}
 
-    # Verify span was created with only agent.name attribute
+    # Verify span was created with only agent.name attribute (space fields missing)
     for name, span in mock_tracer.spans:
         if name == "handle_chat_message":
             assert span.attributes.get("agent.name") == "dorothea"
-            assert "chat.event.type" not in span.attributes
             assert "chat.space.name" not in span.attributes
             assert "chat.space.type" not in span.attributes
 
@@ -121,12 +125,15 @@ async def test_handle_chat_message_space_without_name(
     mock_tracer,
 ) -> None:
     """Test MESSAGE event with space that has no name field."""
-    # Event with space object but no name field (triggers 81->83 branch)
+    # Event with Workspace Add-on format, space object but no name field
     event_space_no_name = {
-        "type": "MESSAGE",
-        "message": {"text": "Hello"},
-        "user": {"name": "users/TEST_USER", "displayName": "Test User"},
-        "space": {"type": "DM"},  # Has type but no name
+        "chat": {
+            "user": {"name": "users/TEST_USER", "displayName": "Test User"},
+            "messagePayload": {
+                "message": {"text": "Hello"},
+                "space": {"type": "DM"},  # Has type but no name
+            },
+        }
     }
 
     sse_lines = [
@@ -147,25 +154,26 @@ async def test_handle_chat_message_space_without_name(
             assert span.attributes.get("chat.space.type") == "DM"
 
 
-async def test_handle_chat_message_non_message_event(
+async def test_handle_chat_message_invalid_event_format(
     mock_tracer,
 ) -> None:
-    """Test handling non-MESSAGE events (should return acknowledgment)."""
+    """Test handling events with invalid format (missing 'chat' field)."""
+    # Event with old simple webhook format (invalid for Workspace Add-on)
     event = {"type": "ADDED_TO_SPACE", "space": {"name": "spaces/TEST"}}
 
     result = await handle_chat_message(event, agent_name="dorothea")
 
     assert result == {
-        "text": "Event received",
+        "text": "Invalid event format",
     }
 
-    # Verify span attributes for non-MESSAGE event
+    # Verify span attributes for invalid event
     assert len(mock_tracer.spans) == 1
     span_name, span = mock_tracer.spans[0]
     assert span_name == "handle_chat_message"
-    assert span.attributes["chat.event.type"] == "ADDED_TO_SPACE"
+    assert span.attributes["agent.name"] == "dorothea"
     assert span.attributes["chat.event.handled"] is False
-    assert span.attributes["chat.response.type"] == "acknowledgment"
+    assert span.attributes["chat.response.type"] == "error"
 
 
 async def test_handle_chat_message_timeout(

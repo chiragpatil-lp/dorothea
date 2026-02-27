@@ -501,46 +501,71 @@ def mock_print_config(mocker: MockerFixture) -> Callable[[type], MockType]:
 # Google Chat fixtures
 @pytest.fixture
 def chat_message_event() -> dict[str, Any]:
-    """Sample Google Chat MESSAGE event with realistic content."""
+    """Sample Google Chat MESSAGE event (Workspace Add-on format)."""
     return {
-        "type": "MESSAGE",
-        "message": {
-            "text": "Show me my timecards for this week",
-            "sender": {"displayName": "Test User"},
-            "space": {"name": "spaces/TEST123"},
-            "thread": {"name": "spaces/TEST123/threads/THREAD1"},
-        },
-        "user": {"name": "users/TEST_USER", "displayName": "Test User"},
-        "space": {"name": "spaces/TEST123", "type": "DM"},
+        "chat": {
+            "user": {
+                "name": "users/TEST_USER",
+                "displayName": "Test User",
+                "email": "test.user@example.com",
+                "type": "HUMAN",
+            },
+            "messagePayload": {
+                "message": {
+                    "text": "Show me my timecards for this week",
+                    "sender": {
+                        "name": "users/TEST_USER",
+                        "displayName": "Test User",
+                    },
+                    "thread": {"name": "spaces/TEST123/threads/THREAD1"},
+                },
+                "space": {
+                    "name": "spaces/TEST123",
+                    "type": "DM",
+                },
+            },
+        }
     }
 
 
 @pytest.fixture
 def simple_message_event() -> dict[str, Any]:
-    """Simple Google Chat MESSAGE event for error testing.
+    """Simple Google Chat MESSAGE event for error testing (Workspace Add-on format).
 
     Minimal event structure used in tests that focus on error handling
     rather than message content.
     """
     return {
-        "type": "MESSAGE",
-        "message": {"text": "test"},
-        "user": {"name": "users/TEST", "displayName": "Test"},
-        "space": {"name": "spaces/TEST", "type": "DM"},
+        "chat": {
+            "user": {
+                "name": "users/TEST",
+                "displayName": "Test",
+            },
+            "messagePayload": {
+                "message": {"text": "test"},
+                "space": {"name": "spaces/TEST", "type": "DM"},
+            },
+        }
     }
 
 
 @pytest.fixture
 def reset_command_event() -> dict[str, Any]:
-    """Google Chat MESSAGE event with /reset command.
+    """Google Chat MESSAGE event with /reset command (Workspace Add-on format).
 
     Used to test session reset functionality across unit and integration tests.
     """
     return {
-        "type": "MESSAGE",
-        "message": {"text": "/reset"},
-        "user": {"name": "users/TEST_USER", "displayName": "Test User"},
-        "space": {"name": "spaces/TEST", "type": "DM"},
+        "chat": {
+            "user": {
+                "name": "users/TEST_USER",
+                "displayName": "Test User",
+            },
+            "messagePayload": {
+                "message": {"text": "/reset"},
+                "space": {"name": "spaces/TEST", "type": "DM"},
+            },
+        }
     }
 
 
