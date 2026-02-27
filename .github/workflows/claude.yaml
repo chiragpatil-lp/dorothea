@@ -19,6 +19,7 @@ jobs:
     #   - PRs from release/* branches (e.g., release/v0.7.0)
     #   - PRs titled "chore: release v*" (release-please convention)
     if: |
+      false &&
       github.event_name == 'pull_request' &&
       github.event.action == 'opened' &&
       !startsWith(github.event.pull_request.title, 'chore: release v') &&
