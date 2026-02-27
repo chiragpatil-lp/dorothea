@@ -7,6 +7,7 @@ the full ADK agent to be running. Uses TestClient to test the actual HTTP layer.
 from typing import Any
 
 import pytest
+from conftest import workspace_addon_response
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
@@ -45,17 +46,13 @@ def test_webhook_route_success(
     # Mock the handle_chat_message function
     mock_handle = mocker.patch(
         "dorothea.chat.handle_chat_message",
-        return_value={
-            "text": "Success response",
-        },
+        return_value=workspace_addon_response("Success response"),
     )
 
     response = client.post("/chat/webhook", json=chat_message_event)
 
     assert response.status_code == 200
-    assert response.json() == {
-        "text": "Success response",
-    }
+    assert response.json() == workspace_addon_response("Success response")
     assert (
         "actionResponse" not in response.json()
     )  # Prevent regression to Apps Script format
@@ -71,17 +68,13 @@ def test_webhook_route_reset_command(
     # Mock handle_reset_command
     mock_reset = mocker.patch(
         "dorothea.chat.handle_reset_command",
-        return_value={
-            "text": "Conversation reset",
-        },
+        return_value=workspace_addon_response("Conversation reset"),
     )
 
     response = client.post("/chat/webhook", json=reset_command_event)
 
     assert response.status_code == 200
-    assert response.json() == {
-        "text": "Conversation reset",
-    }
+    assert response.json() == workspace_addon_response("Conversation reset")
     mock_reset.assert_called_once()
 
 
@@ -102,17 +95,13 @@ def test_webhook_route_reset_command_case_insensitive(
     # Mock handle_reset_command
     mock_reset = mocker.patch(
         "dorothea.chat.handle_reset_command",
-        return_value={
-            "text": "Conversation reset",
-        },
+        return_value=workspace_addon_response("Conversation reset"),
     )
 
     response = client.post("/chat/webhook", json=reset_event)
 
     assert response.status_code == 200
-    assert response.json() == {
-        "text": "Conversation reset",
-    }
+    assert response.json() == workspace_addon_response("Conversation reset")
     mock_reset.assert_called_once()
 
 
@@ -124,9 +113,7 @@ def test_webhook_route_invalid_event_format(client: TestClient) -> None:
     response = client.post("/chat/webhook", json=event)
 
     assert response.status_code == 200
-    assert response.json() == {
-        "text": "Invalid event format",
-    }
+    assert response.json() == workspace_addon_response("Invalid event format")
 
 
 def test_webhook_route_malformed_event_structure(client: TestClient) -> None:
@@ -142,6 +129,4 @@ def test_webhook_route_malformed_event_structure(client: TestClient) -> None:
     response = client.post("/chat/webhook", json=event)
 
     assert response.status_code == 200
-    assert response.json() == {
-        "text": "Error processing message",
-    }
+    assert response.json() == workspace_addon_response("Error processing message")

@@ -10,6 +10,25 @@ import pytest
 from pytest_mock import MockerFixture, MockType
 
 
+def workspace_addon_response(text: str) -> dict[str, Any]:
+    """Create expected Workspace Add-on action response format.
+
+    Helper function for test assertions to match the response format
+    that Google Workspace Add-ons require.
+
+    Args:
+        text: The text message
+
+    Returns:
+        Dict in Workspace Add-on CreateMessageAction format
+    """
+    return {
+        "hostAppDataAction": {
+            "chatDataAction": {"createMessageAction": {"message": {"text": text}}}
+        }
+    }
+
+
 def pytest_configure(config: pytest.Config) -> None:
     """Pytest hook to set up environment before test collection.
 
