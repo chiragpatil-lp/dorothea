@@ -38,6 +38,7 @@ async def test_handle_chat_message_success(
     result = await handle_chat_message(chat_message_event, agent_name="dorothea")
 
     assert result == {"text": "Found 3."}
+    assert "actionResponse" not in result  # Prevent regression to Apps Script format
 
     # Verify span creation
     span_names = [name for name, _ in mock_tracer.spans]

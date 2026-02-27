@@ -69,6 +69,9 @@ async def handle_chat_message(event: dict, agent_name: str) -> dict[str, Any]:
         Dict with "text" key containing the response message for Google Chat.
         Format: {"text": "response message"}
 
+        Note: HTTP Endpoint URL Chat apps (vs Apps Script) require direct JSON
+        responses. The actionResponse wrapper causes instant rejection by Google Chat.
+
     Raises:
         httpx.TimeoutException: If agent execution exceeds 30 seconds
         httpx.HTTPStatusError: If ADK endpoint returns error status

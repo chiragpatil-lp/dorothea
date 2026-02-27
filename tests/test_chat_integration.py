@@ -56,6 +56,9 @@ def test_webhook_route_success(
     assert response.json() == {
         "text": "Success response",
     }
+    assert (
+        "actionResponse" not in response.json()
+    )  # Prevent regression to Apps Script format
     mock_handle.assert_called_once()
 
 
