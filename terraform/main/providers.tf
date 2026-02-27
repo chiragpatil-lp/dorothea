@@ -5,4 +5,11 @@ provider "google" {
   user_project_override = true
 }
 
+provider "google-beta" {
+  project               = var.project
+  region                = var.location
+  billing_project       = var.project
+  user_project_override = true
+}
+
 provider "random" {}
