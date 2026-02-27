@@ -358,6 +358,11 @@ async def webhook(
     """
     event = await request.json()
 
+    # DEBUG: Log the full event to diagnose the issue
+    logger.info(
+        f"🔍 DEBUG: Received event type={event.get('type')}, full event={event}"
+    )
+
     # Detect /reset command
     if event.get("type") == "MESSAGE":
         message_text = event.get("message", {}).get("text", "").strip().lower()
