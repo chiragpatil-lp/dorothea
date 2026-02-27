@@ -108,7 +108,7 @@ resource "google_cloud_run_v2_service" "app" {
   # Service-level scaling (updates without creating new revisions)
   scaling {
     # Set min_instance_count to 1 or more in production to avoid cold start latency
-    # min_instance_count = 1
+    min_instance_count = 1
     max_instance_count = 100
   }
 
