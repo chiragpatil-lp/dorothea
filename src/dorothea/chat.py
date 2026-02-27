@@ -204,8 +204,10 @@ async def handle_chat_message(event: dict, agent_name: str) -> dict[str, Any]:
             span.set_attribute("chat.response.truncated", len(response_text) > 100)
 
             logger.info(f"Returning response: {response_text[:100]}...")
-
-            return {"text": response_text}
+            print(f"🔵 Extracted response text: {response_text}")
+            response_dict = {"text": response_text}
+            print(f"🔵 Returning to Google Chat: {response_dict}")
+            return response_dict
 
         except httpx.TimeoutException as e:
             logger.error("Agent execution timeout", exc_info=True)
@@ -369,10 +371,12 @@ async def webhook(
     event = await request.json()
 
     logger.debug(f"Received Google Chat event: {event}")
+    print(f"🔷 Webhook received event keys: {list(event.keys())}")
 
     # Validate Workspace Add-on event format
     if not event.get("chat"):
         logger.warning("Invalid event: missing 'chat' field")
+        print("🔴 Event missing 'chat' field, returning error")
         return {"text": "Invalid event format"}
 
     # Extract message text from Workspace Add-on format
@@ -380,13 +384,21 @@ async def webhook(
         message_text = (
             event["chat"]["messagePayload"]["message"]["text"].strip().lower()
         )
-    except KeyError:
+        print(f"🔷 Extracted message text: '{message_text}'")
+    except KeyError as e:
         logger.error("Failed to extract message text from event")
+        print(f"🔴 KeyError extracting message: {e}")
         return {"text": "Error processing message"}
 
     # Detect /reset command
     if message_text == "/reset":
-        return await handle_reset_command(event, agent_name)
+        print("🔷 Detected /reset command")
+        result = await handle_reset_command(event, agent_name)
+        print(f"🔵 Webhook returning (reset): {result}")
+        return result
 
     # Regular message handling
-    return await handle_chat_message(event, agent_name)
+    print("🔷 Calling handle_chat_message")
+    result = await handle_chat_message(event, agent_name)
+    print(f"🔵 Webhook returning (message): {result}")
+    return result
