@@ -356,7 +356,11 @@ async def webhook(
     Returns:
         dict with "text" key containing response for Google Chat
     """
+    print("🔴 WEBHOOK CALLED - START")  # DEBUG: Print to stdout
+    print(f"🔴 Agent name: {agent_name}")  # DEBUG
+
     event = await request.json()
+    print(f"🔴 Event parsed: type={event.get('type')}")  # DEBUG
 
     # DEBUG: Log the full event to diagnose the issue
     logger.info(
@@ -365,9 +369,11 @@ async def webhook(
 
     # Detect /reset command
     if event.get("type") == "MESSAGE":
+        print("🔴 Event type is MESSAGE")  # DEBUG
         message_text = event.get("message", {}).get("text", "").strip().lower()
         if message_text == "/reset":
             return await handle_reset_command(event, agent_name)
 
     # Regular message handling
+    print("🔴 Calling handle_chat_message")  # DEBUG
     return await handle_chat_message(event, agent_name)
