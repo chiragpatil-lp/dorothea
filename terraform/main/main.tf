@@ -182,10 +182,10 @@ resource "google_cloud_run_v2_service_iam_member" "chat_invoker" {
   location = data.google_cloud_run_v2_service.app[each.key].location
   name     = data.google_cloud_run_v2_service.app[each.key].name
   role     = "roles/run.invoker"
-  
+
   # Grant run.invoker to G Suite Add-ons service account.
   # This Google-managed service account is auto-created when gsuiteaddons API is enabled.
   # Pattern: service-{PROJECT_NUMBER}@gcp-sa-gsuiteaddons.iam.gserviceaccount.com
   # Required for Chat apps using HTTP Endpoint URL (not Apps Script).
-  member   = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-gsuiteaddons.iam.gserviceaccount.com"
+  member = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-gsuiteaddons.iam.gserviceaccount.com"
 }
