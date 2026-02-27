@@ -14,7 +14,8 @@ from .prompt import (
     return_global_instruction,
     return_instruction_root,
 )
-from .tools import example_tool
+
+from google.adk.tools import google_search
 
 logging_callbacks = LoggingCallbacks()
 
@@ -25,7 +26,7 @@ root_agent = LlmAgent(
     after_agent_callback=[logging_callbacks.after_agent, add_session_to_memory],
     model=os.getenv("ROOT_AGENT_MODEL", "gemini-2.5-flash"),
     instruction=return_instruction_root(),
-    tools=[PreloadMemoryTool(), example_tool],
+    tools=[PreloadMemoryTool(), google_search],
     before_model_callback=logging_callbacks.before_model,
     after_model_callback=logging_callbacks.after_model,
     before_tool_callback=logging_callbacks.before_tool,
