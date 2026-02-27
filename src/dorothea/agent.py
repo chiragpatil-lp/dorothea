@@ -19,7 +19,7 @@ from .tools import example_tool
 logging_callbacks = LoggingCallbacks()
 
 root_agent = LlmAgent(
-    name="example_agent",
+    name="dorothea",
     description=return_description_root(),
     before_agent_callback=logging_callbacks.before_agent,
     after_agent_callback=[logging_callbacks.after_agent, add_session_to_memory],
