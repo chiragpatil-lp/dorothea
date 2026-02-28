@@ -123,11 +123,14 @@ async def handle_chat_message(event: dict, agent_name: str) -> dict[str, Any]:
 
     # Extract space info from Workspace Add-on format
     try:
-        space = event["chat"]["messagePayload"]["space"]
-        if space_name := space.get("name"):
-            span_attributes["chat.space.name"] = space_name
-        if space_type := space.get("type"):
-            span_attributes["chat.space.type"] = space_type
+        chat_data = event["chat"]
+        payload = chat_data.get("messagePayload") or chat_data.get("appCommandPayload")
+        if payload and "space" in payload:
+            space = payload["space"]
+            if space_name := space.get("name"):
+                span_attributes["chat.space.name"] = space_name
+            if space_type := space.get("type"):
+                span_attributes["chat.space.type"] = space_type
     except (KeyError, TypeError):
         pass  # Space info is optional for observability
 
@@ -147,10 +150,15 @@ async def handle_chat_message(event: dict, agent_name: str) -> dict[str, Any]:
 
             # Extract message details from Workspace Add-on format
             chat_data = event["chat"]
-            message_payload = chat_data["messagePayload"]
-            message_data = message_payload["message"]
 
-            user_message = message_data["text"]
+            if "messagePayload" in chat_data:
+                message_data = chat_data["messagePayload"].get("message", {})
+            elif "appCommandPayload" in chat_data:
+                message_data = chat_data["appCommandPayload"].get("message", {})
+            else:
+                raise KeyError("Neither messagePayload nor appCommandPayload found")
+
+            user_message = message_data.get("text", "")
             chat_user_name = chat_data["user"]["name"]  # "users/123456789"
             user_display_name = chat_data["user"]["displayName"]
 
@@ -423,9 +431,19 @@ async def webhook(
 
     # Extract message text from Workspace Add-on format
     try:
-        message_text = (
-            event["chat"]["messagePayload"]["message"]["text"].strip().lower()
-        )
+        chat_data = event["chat"]
+        if "messagePayload" in chat_data:
+            message_text = chat_data["messagePayload"]["message"]["text"]
+        elif "appCommandPayload" in chat_data:
+            message_text = (
+                chat_data["appCommandPayload"].get("message", {}).get("text", "")
+            )
+            # If no text is provided, try to get the command ID if needed,
+            # but usually slash commands have the text typed by the user.
+        else:
+            raise KeyError("Neither messagePayload nor appCommandPayload found")
+
+        message_text = message_text.strip().lower()
         print(f"🔷 Extracted message text: '{message_text}'")
     except KeyError as e:
         logger.error("Failed to extract message text from event")
