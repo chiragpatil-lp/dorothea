@@ -20,7 +20,6 @@ See `.env.example` in the repository root for template configuration with inline
 | [SERVE_WEB_INTERFACE](#agent-features) | Optional | `FALSE` | Enable ADK web UI |
 | [RELOAD_AGENTS](#agent-features) | Optional | `FALSE` | Hot-reload on file changes |
 | [ROOT_AGENT_MODEL](#agent-features) | Optional | `gemini-2.5-flash` | Override default model |
-| [VERTEX_AI_LOCATION](#advanced) | Optional | Auto-detected | Override Vertex AI model location |
 | [ALLOW_ORIGINS](#cors) | Optional | `["http://localhost", "http://localhost:8000"]` | CORS allowed origins |
 | [AGENT_DIR](#advanced) | Optional | Auto-detected | Override agent directory |
 | [HOST](#advanced) | Optional | `127.0.0.1` | Server bind address |
@@ -149,11 +148,6 @@ Production-ready persistence for sessions, memory, and artifacts. Configure afte
 
 ### Advanced
 
-**VERTEX_AI_LOCATION**
-- **Default:** Auto-detected (Uses `GOOGLE_CLOUD_LOCATION` deployment region)
-- **Purpose:** Override location specifically for Vertex AI API calls (e.g., using `global` for Gemini 3 models) without changing the infrastructure deployment region.
-- **Where:** Configure via GitHub Environment Variables for Cloud Run. (Note: Locally, just set `GOOGLE_CLOUD_LOCATION=global` directly in `.env`).
-
 **AGENT_DIR**
 - **Default:** Auto-detected (parent directory of `server.py`)
 - **Purpose:** Override agent directory path for ADK
@@ -233,10 +227,6 @@ Override runtime config via GitHub Environment Variables (mapped to `TF_VAR_*`):
 **TF_VAR_root_agent_model**
 - **Source:** `${{ vars.ROOT_AGENT_MODEL }}` (optional GitHub Environment Variable)
 - **Purpose:** Override ROOT_AGENT_MODEL for Cloud Run deployment
-
-**TF_VAR_vertex_ai_location**
-- **Source:** `${{ vars.VERTEX_AI_LOCATION }}` (optional GitHub Environment Variable)
-- **Purpose:** Override VERTEX_AI_LOCATION for Cloud Run deployment
 
 **TF_VAR_serve_web_interface**
 - **Source:** `${{ vars.SERVE_WEB_INTERFACE }}` (optional GitHub Environment Variable)
