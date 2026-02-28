@@ -30,7 +30,7 @@ locals {
     AGENT_NAME                                         = var.agent_name
     ALLOW_ORIGINS                                      = jsonencode(["http://127.0.0.1", "http://127.0.0.1:8000"]) # Localhost-only for gcloud proxy access (add client service origins when UI is deployed)
     ARTIFACT_SERVICE_URI                               = google_storage_bucket.artifact_service.url
-    GOOGLE_CLOUD_LOCATION                              = coalesce(var.vertex_ai_location, var.location)
+    GOOGLE_CLOUD_LOCATION                              = var.location
     GOOGLE_CLOUD_PROJECT                               = var.project
     GOOGLE_GENAI_USE_VERTEXAI                          = "TRUE"
     LOG_LEVEL                                          = coalesce(var.log_level, "INFO")

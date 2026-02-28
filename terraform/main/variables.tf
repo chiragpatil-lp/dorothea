@@ -69,10 +69,3 @@ variable "adk_suppress_experimental_feature_warnings" {
   nullable    = true
   default     = null
 }
-
-variable "vertex_ai_location" {
-  description = "Override for Vertex AI model location (e.g., global for Gemini 3)"
-  type        = string
-  nullable    = true
-  default     = null
-}
