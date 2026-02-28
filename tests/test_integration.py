@@ -49,8 +49,9 @@ class TestAgentIntegration:
 
         # Required: agent model
         assert agent.model is not None
-        assert isinstance(agent.model, str)
-        assert len(agent.model) > 0
+        from google.adk.models.base_llm import BaseLlm
+
+        assert isinstance(agent.model, (str, BaseLlm))
 
     def test_agent_instructions_are_valid_if_configured(self) -> None:
         """Verify agent instructions (if configured) are valid strings."""
