@@ -130,3 +130,32 @@ def test_webhook_route_malformed_event_structure(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == workspace_addon_response("Error processing message")
+
+
+def test_webhook_route_app_command_payload(
+    client: TestClient, mocker: MockerFixture
+) -> None:
+    """Test webhook route with appCommandPayload (slash command)."""
+    # Mock handle_reset_command
+    mock_reset = mocker.patch(
+        "dorothea.chat.handle_reset_command",
+        return_value=workspace_addon_response("Conversation reset via slash command"),
+    )
+
+    event = {
+        "chat": {
+            "user": {"name": "users/TEST_USER", "displayName": "Test User"},
+            "appCommandPayload": {
+                "message": {"text": "/reset"},
+                "space": {"name": "spaces/TEST", "type": "DM"},
+            },
+        }
+    }
+
+    response = client.post("/chat/webhook", json=event)
+
+    assert response.status_code == 200
+    assert response.json() == workspace_addon_response(
+        "Conversation reset via slash command"
+    )
+    mock_reset.assert_called_once()

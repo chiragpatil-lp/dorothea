@@ -557,3 +557,46 @@ async def test_handle_reset_command_generic_exception(
             assert len(span.exceptions) == 1
             assert isinstance(span.exceptions[0], RuntimeError)
             assert span.status is not None
+
+
+async def test_handle_chat_message_app_command_payload(
+    chat_message_event: dict[str, Any],
+    mock_httpx_client,
+    mock_create_session_service,
+    mock_tracer,
+) -> None:
+    """Test successful MESSAGE event processing using appCommandPayload."""
+    sse_lines = [
+        (
+            'data: {"type": "message", "content": '
+            '{"parts": [{"text": "Found from slash command."}]}}'
+        ),
+        'data: {"type": "end"}',
+    ]
+
+    mock_create_session_service(session_id="test-session-app-command")
+    mock_httpx_client(sse_lines=sse_lines, exception=None)
+
+    # Convert to appCommandPayload format
+    event = dict(chat_message_event)
+    event["chat"]["appCommandPayload"] = event["chat"].pop("messagePayload")
+
+    result = await handle_chat_message(event, agent_name="dorothea")
+
+    assert result == workspace_addon_response("Found from slash command.")
+
+
+async def test_handle_chat_message_missing_payload(
+    chat_message_event: dict[str, Any],
+    mock_tracer,
+) -> None:
+    """Test handling events missing both payload types."""
+    # Convert to missing payload format
+    event = dict(chat_message_event)
+    event["chat"].pop("messagePayload")
+
+    result = await handle_chat_message(event, agent_name="dorothea")
+
+    assert result == workspace_addon_response(
+        "Sorry, I encountered an error processing your request."
+    )
