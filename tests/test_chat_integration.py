@@ -116,9 +116,12 @@ def test_webhook_route_invalid_event_format(client: TestClient) -> None:
     assert response.json() == workspace_addon_response("Invalid event format")
 
 
-def test_webhook_route_malformed_event_structure(client: TestClient) -> None:
-    """Test webhook route with malformed Workspace Add-on event structure."""
+def test_webhook_route_malformed_event_structure(
+    client: TestClient, mocker: MockerFixture
+) -> None:
+    """Test webhook route with missing message payload (first-time install)."""
     # Event has "chat" field but missing nested message structure
+    # This happens during first-time app installation (ADDED_TO_SPACE events)
     event = {
         "chat": {
             "user": {"name": "users/TEST_USER", "displayName": "Test User"},
@@ -126,10 +129,28 @@ def test_webhook_route_malformed_event_structure(client: TestClient) -> None:
         }
     }
 
+    # Mock handle_chat_message to return welcome message
+    mock_handle = mocker.patch(
+        "dorothea.chat.handle_chat_message",
+        return_value=workspace_addon_response(
+            "👋 Hi <users/TEST_USER>! I'm Dorothea, your Google developer "
+            "documentation assistant. I have access to the Google Developer "
+            "Knowledge API to help you find accurate, up-to-date information "
+            "from official Google documentation.\n\n"
+            "Ask me anything about Google Cloud, Android, Chrome, Firebase, "
+            "TensorFlow, and more!"
+        ),
+    )
+
     response = client.post("/chat/webhook", json=event)
 
     assert response.status_code == 200
-    assert response.json() == workspace_addon_response("Error processing message")
+    response_text = response.json()["hostAppDataAction"]["chatDataAction"][
+        "createMessageAction"
+    ]["message"]["text"]
+    assert "Dorothea" in response_text
+    assert "Google Developer Knowledge API" in response_text
+    mock_handle.assert_called_once()
 
 
 def test_webhook_route_app_command_payload(
@@ -159,3 +180,31 @@ def test_webhook_route_app_command_payload(
         "Conversation reset via slash command"
     )
     mock_reset.assert_called_once()
+
+
+def test_webhook_route_message_payload_without_text(
+    client: TestClient, mocker: MockerFixture
+) -> None:
+    """Test webhook route with messagePayload but missing text field."""
+    # Event has messagePayload but message object doesn't have text field
+    event = {
+        "chat": {
+            "user": {"name": "users/TEST_USER", "displayName": "Test User"},
+            "messagePayload": {
+                "message": {},  # No text field
+                "space": {"name": "spaces/TEST", "type": "DM"},
+            },
+        }
+    }
+
+    # Mock handle_chat_message to return welcome message
+    mock_handle = mocker.patch(
+        "dorothea.chat.handle_chat_message",
+        return_value=workspace_addon_response("Welcome message"),
+    )
+
+    response = client.post("/chat/webhook", json=event)
+
+    assert response.status_code == 200
+    assert response.json() == workspace_addon_response("Welcome message")
+    mock_handle.assert_called_once()

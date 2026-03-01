@@ -21,6 +21,7 @@ Pattern:
 
 import json
 import logging
+from contextlib import suppress
 from typing import Any
 
 import httpx
@@ -62,14 +63,11 @@ def create_workspace_addon_response(text: str) -> dict[str, Any]:
         - https://developers.google.com/workspace/add-ons/chat/send-messages
         - https://developers.google.com/workspace/add-ons/chat/convert
     """
-    print(f"🟢 Creating Workspace Add-on response with text: {text[:100]}...")
-    response = {
+    return {
         "hostAppDataAction": {
             "chatDataAction": {"createMessageAction": {"message": {"text": text}}}
         }
     }
-    print("🟢 Workspace Add-on response structure created successfully")
-    return response
 
 
 def get_agent_name() -> str:
@@ -258,22 +256,15 @@ async def handle_chat_message(event: dict, agent_name: str) -> dict[str, Any]:
                     adk_span.set_attribute("adk.events.count", len(events))
 
             # Extract final response
-            print(f"🔷 Extracting agent response from {len(events)} events")
             response_text = extract_agent_response(events)
-            print(
-                f"🔵 Extracted response text ({len(response_text)} chars): "
-                f"{response_text[:100]}..."
-            )
             span.set_attribute("chat.response.length", len(response_text))
             span.set_attribute("chat.response.truncated", len(response_text) > 100)
 
             logger.info(f"Returning response: {response_text[:100]}...")
             response_dict = create_workspace_addon_response(response_text)
-            print(f"🔵 Final response dict keys: {list(response_dict.keys())}")
             return response_dict
 
         except httpx.TimeoutException as e:
-            print(f"🔴 Timeout exception caught: {e}")
             logger.error("Agent execution timeout", exc_info=True)
             span.set_status(trace.Status(trace.StatusCode.ERROR, "timeout"))
             span.record_exception(e)
@@ -282,7 +273,6 @@ async def handle_chat_message(event: dict, agent_name: str) -> dict[str, Any]:
                 "ask me to check fewer timecards."
             )
         except httpx.HTTPStatusError as e:
-            print(f"🔴 HTTP error from ADK: {e.response.status_code} - {e}")
             logger.error(f"Agent HTTP error: {e}", exc_info=True)
             span.set_status(trace.Status(trace.StatusCode.ERROR, "http_error"))
             span.record_exception(e)
@@ -291,10 +281,6 @@ async def handle_chat_message(event: dict, agent_name: str) -> dict[str, Any]:
                 "Sorry, the agent encountered an error. Please try again."
             )
         except Exception as e:
-            print(
-                f"🔴 Unexpected exception in handle_chat_message: "
-                f"{type(e).__name__}: {e}"
-            )
             logger.error(f"Chat webhook error: {e}", exc_info=True)
             span.set_status(trace.Status(trace.StatusCode.ERROR, "unknown"))
             span.record_exception(e)
@@ -393,14 +379,12 @@ async def handle_reset_command(event: dict, agent_name: str) -> dict[str, Any]:
             span.set_attribute("sessions.deleted_count", count)
 
             if count > 0:
-                print(f"🟢 Deleted {count} session(s) for user {user_id}")
                 logger.info(f"Deleted {count} session(s) for user {chat_user_name}")
                 return create_workspace_addon_response(
                     "✨ OK, let's start from the beginning! "
                     "Your conversation history has been reset."
                 )
             else:
-                print(f"🔷 No sessions found for user {user_id}")
                 logger.info(f"No sessions found for user {chat_user_name}")
                 return create_workspace_addon_response(
                     "You don't have any active conversation history to reset."
@@ -435,44 +419,34 @@ async def webhook(
     event = await request.json()
 
     logger.debug(f"Received Google Chat event: {event}")
-    print(f"🔷 Webhook received event keys: {list(event.keys())}")
 
     # Validate Workspace Add-on event format
     if not event.get("chat"):
         logger.warning("Invalid event: missing 'chat' field")
-        print("🔴 Event missing 'chat' field, returning error")
         return create_workspace_addon_response("Invalid event format")
 
     # Extract message text from Workspace Add-on format
-    try:
-        chat_data = event["chat"]
-        if "messagePayload" in chat_data:
+    # If no message payload exists (e.g., first-time install), delegate to
+    # handle_chat_message which will send welcome message
+    chat_data = event["chat"]
+    message_text = None
+
+    if "messagePayload" in chat_data:
+        with suppress(KeyError):
             message_text = chat_data["messagePayload"]["message"]["text"]
-        elif "appCommandPayload" in chat_data:
-            message_text = (
-                chat_data["appCommandPayload"].get("message", {}).get("text", "")
-            )
-            # If no text is provided, try to get the command ID if needed,
-            # but usually slash commands have the text typed by the user.
-        else:
-            raise KeyError("Neither messagePayload nor appCommandPayload found")
+    elif "appCommandPayload" in chat_data:
+        message_text = chat_data["appCommandPayload"].get("message", {}).get("text", "")
 
+    # If we have message text, check for /reset command
+    if message_text:
         message_text = message_text.strip().lower()
-        print(f"🔷 Extracted message text: '{message_text}'")
-    except KeyError as e:
-        logger.error("Failed to extract message text from event")
-        print(f"🔴 KeyError extracting message: {e}")
-        return create_workspace_addon_response("Error processing message")
+        logger.debug(f"Extracted message text: '{message_text}'")
 
-    # Detect /reset command
-    if message_text == "/reset":
-        print("🔷 Detected /reset command")
-        result = await handle_reset_command(event, agent_name)
-        print(f"🔵 Webhook returning (reset): {result}")
-        return result
+        # Detect /reset command
+        if message_text == "/reset":
+            logger.debug("Detected /reset command")
+            return await handle_reset_command(event, agent_name)
 
-    # Regular message handling
-    print("🔷 Calling handle_chat_message")
-    result = await handle_chat_message(event, agent_name)
-    print(f"🔵 Webhook returning (message): {result}")
-    return result
+    # Regular message handling (includes welcome message for first-time users)
+    logger.debug("Calling handle_chat_message")
+    return await handle_chat_message(event, agent_name)
