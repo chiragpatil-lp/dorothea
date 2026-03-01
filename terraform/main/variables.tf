@@ -74,5 +74,6 @@ variable "google_developer_knowledge_api_key" {
   description = "API key for Google Developer Knowledge MCP server"
   type        = string
   nullable    = true
+  default     = null
   sensitive   = true
 }

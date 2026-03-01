@@ -24,7 +24,7 @@ locals {
   locations = toset([var.location])
 
   # Cloud Run service environment variables
-  run_app_env = {
+  run_app_env = merge({
     ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS         = coalesce(var.adk_suppress_experimental_feature_warnings, "TRUE")
     AGENT_ENGINE                                       = google_vertex_ai_reasoning_engine.session_and_memory.id
     AGENT_NAME                                         = var.agent_name
@@ -32,7 +32,6 @@ locals {
     ARTIFACT_SERVICE_URI                               = google_storage_bucket.artifact_service.url
     GOOGLE_CLOUD_LOCATION                              = var.location
     GOOGLE_CLOUD_PROJECT                               = var.project
-    GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY                 = coalesce(var.google_developer_knowledge_api_key, "MISSING_API_KEY")
     GOOGLE_GENAI_USE_VERTEXAI                          = "TRUE"
     LOG_LEVEL                                          = coalesce(var.log_level, "INFO")
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = coalesce(var.otel_instrumentation_genai_capture_message_content, "FALSE")
@@ -40,7 +39,9 @@ locals {
     ROOT_AGENT_MODEL                                   = coalesce(var.root_agent_model, "gemini-2.5-flash")
     SERVE_WEB_INTERFACE                                = coalesce(var.serve_web_interface, "FALSE")
     TELEMETRY_NAMESPACE                                = var.environment
-  }
+  }, var.google_developer_knowledge_api_key != null ? {
+    GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY = var.google_developer_knowledge_api_key
+  } : {})
 
   # Create a unique Agent resource name per deployment environment
   resource_name = "${var.agent_name}-${var.environment}"

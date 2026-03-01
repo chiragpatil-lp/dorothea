@@ -162,8 +162,8 @@ class ServerEnv(BaseModel):
         description="Server port",
     )
 
-    google_developer_knowledge_api_key: str = Field(
-        ...,
+    google_developer_knowledge_api_key: str | None = Field(
+        default=None,
         alias="GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY",
         description="API Key for Google Developer Knowledge MCP server",
         min_length=1,
@@ -223,10 +223,12 @@ class ServerEnv(BaseModel):
         print(f"PORT:                  {self.port}")
         print(f"ALLOW_ORIGINS:         {self.allow_origins}")
         print(f"OTEL_CAPTURE_CONTENT:  {self.otel_capture_content}")
-        print(
-            f"GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY: "
-            f"{'<set>' if self.google_developer_knowledge_api_key else '<not set>'}\n\n"
+        api_key_status = (
+            "<set>"
+            if self.google_developer_knowledge_api_key is not None
+            else "<not set>"
         )
+        print(f"GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY: {api_key_status}\n\n")
 
     @property
     def agent_engine_uri(self) -> str | None:
