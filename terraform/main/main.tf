@@ -32,6 +32,7 @@ locals {
     ARTIFACT_SERVICE_URI                               = google_storage_bucket.artifact_service.url
     GOOGLE_CLOUD_LOCATION                              = var.location
     GOOGLE_CLOUD_PROJECT                               = var.project
+    GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY                 = coalesce(var.google_developer_knowledge_api_key, "MISSING_API_KEY")
     GOOGLE_GENAI_USE_VERTEXAI                          = "TRUE"
     LOG_LEVEL                                          = coalesce(var.log_level, "INFO")
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = coalesce(var.otel_instrumentation_genai_capture_message_content, "FALSE")

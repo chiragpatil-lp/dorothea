@@ -162,6 +162,12 @@ class ServerEnv(BaseModel):
         description="Server port",
     )
 
+    google_developer_knowledge_api_key: str = Field(
+        ...,
+        alias="GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY",
+        description="API Key for Google Developer Knowledge MCP server",
+    )
+
     otel_capture_content: bool = Field(
         ...,
         alias="OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT",
@@ -215,7 +221,11 @@ class ServerEnv(BaseModel):
         print(f"HOST:                  {self.host}")
         print(f"PORT:                  {self.port}")
         print(f"ALLOW_ORIGINS:         {self.allow_origins}")
-        print(f"OTEL_CAPTURE_CONTENT:  {self.otel_capture_content}\n\n")
+        print(f"OTEL_CAPTURE_CONTENT:  {self.otel_capture_content}")
+        print(
+            f"GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY: "
+            f"{self.google_developer_knowledge_api_key}\n\n"
+        )
 
     @property
     def agent_engine_uri(self) -> str | None:
