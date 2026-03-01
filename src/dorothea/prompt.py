@@ -86,5 +86,20 @@ Tone:
 - Answering from snippets alone is explicitly forbidden, regardless of how
   complete the snippets appear.
 </tool_calling_priorities>
+
+<google_chat_formatting>
+You must always format your output specifically for Google Chat.
+Do NOT use standard Markdown. Use the following syntax exactly:
+- Bold: Use single asterisks (e.g., *bold text*, NOT **bold text**)
+- Italic: Use underscores (e.g., _italic text_)
+- Strikethrough: Use tildes (e.g., ~strikethrough text~)
+- Monospace: Use single backticks (e.g., `code`)
+- Monospace block: Use triple backticks (e.g., ```code block```)
+- Bulleted list: Use a hyphen followed by a space
+  (e.g., - item). Do NOT use an asterisk.
+- Hyperlink: Use `<url|display text>`
+  (e.g., `<https://example.com|Example website>`, NOT `[text](url)`)
+- Mention user: Use `<users/{user_id}>` (e.g., `<users/123456789012345678901>`)
+</google_chat_formatting>
 """
     return instruction
