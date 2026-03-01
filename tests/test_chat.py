@@ -590,13 +590,23 @@ async def test_handle_chat_message_missing_payload(
     chat_message_event: dict[str, Any],
     mock_tracer,
 ) -> None:
-    """Test handling events missing both payload types."""
+    """Test handling events missing both payload types (e.g., first-time install)."""
     # Convert to missing payload format
     event = dict(chat_message_event)
     event["chat"].pop("messagePayload")
 
     result = await handle_chat_message(event, agent_name="dorothea")
 
-    assert result == workspace_addon_response(
-        "Sorry, I encountered an error processing your request."
-    )
+    # Should return welcome message instead of error
+    response_text = result["hostAppDataAction"]["chatDataAction"][
+        "createMessageAction"
+    ]["message"]["text"]
+    assert "Dorothea" in response_text
+    assert "Google Developer Knowledge API" in response_text
+    assert "<users/TEST_USER>" in response_text
+
+    # Verify span attributes
+    for name, span in mock_tracer.spans:
+        if name == "handle_chat_message":
+            assert span.attributes.get("chat.event.type") == "welcome"
+            assert span.attributes.get("chat.user.id") == "TEST_USER"

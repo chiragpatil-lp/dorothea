@@ -156,7 +156,21 @@ async def handle_chat_message(event: dict, agent_name: str) -> dict[str, Any]:
             elif "appCommandPayload" in chat_data:
                 message_data = chat_data["appCommandPayload"].get("message", {})
             else:
-                raise KeyError("Neither messagePayload nor appCommandPayload found")
+                # Handle first-time installation or events without message payload
+                # (e.g., ADDED_TO_SPACE events)
+                logger.info("Event without message payload, sending welcome message")
+                chat_user_name = chat_data["user"]["name"]
+                user_id = GoogleChatSessionManager.extract_user_id(chat_user_name)
+                span.set_attribute("chat.user.id", user_id)
+                span.set_attribute("chat.event.type", "welcome")
+                return create_workspace_addon_response(
+                    f"👋 Hi <users/{user_id}>! I'm Dorothea, your Google developer "
+                    "documentation assistant. I have access to the Google Developer "
+                    "Knowledge API to help you find accurate, up-to-date information "
+                    "from official Google documentation.\n\n"
+                    "Ask me anything about Google Cloud, Android, Chrome, Firebase, "
+                    "TensorFlow, and more!"
+                )
 
             user_message = message_data.get("text", "")
             chat_user_name = chat_data["user"]["name"]  # "users/123456789"
