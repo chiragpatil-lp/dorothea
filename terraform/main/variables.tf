@@ -69,3 +69,11 @@ variable "adk_suppress_experimental_feature_warnings" {
   nullable    = true
   default     = null
 }
+
+variable "google_developer_knowledge_api_key" {
+  description = "API key for Google Developer Knowledge MCP server"
+  type        = string
+  nullable    = true
+  default     = null
+  sensitive   = true
+}

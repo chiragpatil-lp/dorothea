@@ -84,6 +84,7 @@ def pytest_configure(config: pytest.Config) -> None:
     os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
     os.environ["AGENT_NAME"] = "test-agent"
     os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = "true"
+    os.environ["GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY"] = "test-api-key"
     os.environ["AGENT_ENGINE"] = (
         "projects/test-project/locations/us-central1/reasoningEngines/test-engine"
     )
@@ -467,6 +468,7 @@ def valid_server_env() -> dict[str, str]:
         "GOOGLE_CLOUD_PROJECT": "test-project",
         "AGENT_NAME": "test-agent",
         "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY": "test-api-key",
     }
 
 

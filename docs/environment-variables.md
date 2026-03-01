@@ -15,6 +15,7 @@ See `.env.example` in the repository root for template configuration with inline
 | **[OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT](#opentelemetry)** | ✅ | - | Capture LLM content in traces |
 | **[AGENT_ENGINE](#cloud-resources)** | Recommended | in-memory | Session/memory persistence |
 | **[ARTIFACT_SERVICE_URI](#cloud-resources)** | Recommended | in-memory | Artifact storage |
+| **[GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY](#tool-configuration)** | ✅ | - | API key for Google Developer Knowledge MCP server |
 | [LOG_LEVEL](#logging) | Optional | `INFO` | Logging verbosity |
 | [TELEMETRY_NAMESPACE](#logging) | Optional | `local` | Trace grouping |
 | [SERVE_WEB_INTERFACE](#agent-features) | Optional | `FALSE` | Enable ADK web UI |
@@ -71,6 +72,15 @@ These must be set for the agent to function.
 - **Where:** Set locally in `.env`, set before bootstrap
 - **Reference:** [OpenTelemetry GenAI Instrumentation](https://opentelemetry.io/blog/2024/otel-generative-ai/#example-usage)
 - **Security:** Set to `FALSE` if handling sensitive data
+
+---
+
+## Tool Configuration
+
+**GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY**
+- **Value:** Your Google Developer Knowledge API key
+- **Purpose:** Authenticates the Google Developer Knowledge MCP server toolset
+- **Where:** Set locally in `.env`, configured via GitHub Environment Variables for Cloud Run
 
 ---
 

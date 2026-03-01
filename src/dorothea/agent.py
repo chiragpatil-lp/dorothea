@@ -18,6 +18,7 @@ from .prompt import (
     return_global_instruction,
     return_instruction_root,
 )
+from .tools import google_developer_knowledge_toolset
 
 logging_callbacks = LoggingCallbacks()
 
@@ -55,7 +56,7 @@ root_agent = LlmAgent(
         model=os.getenv("ROOT_AGENT_MODEL", "gemini-3-flash-preview")
     ),
     instruction=return_instruction_root(),
-    tools=[PreloadMemoryTool(), google_search],
+    tools=[PreloadMemoryTool(), google_search, google_developer_knowledge_toolset],
     before_model_callback=logging_callbacks.before_model,
     after_model_callback=logging_callbacks.after_model,
     before_tool_callback=logging_callbacks.before_tool,
