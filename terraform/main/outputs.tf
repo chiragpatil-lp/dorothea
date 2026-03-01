@@ -57,6 +57,7 @@ output "cloud_run_services" {
 output "configured_environment_variables" {
   description = "Configured Cloud Run service environment variables"
   value       = local.run_app_env
+  sensitive   = true
 }
 
 

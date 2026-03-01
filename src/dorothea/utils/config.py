@@ -166,6 +166,7 @@ class ServerEnv(BaseModel):
         ...,
         alias="GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY",
         description="API Key for Google Developer Knowledge MCP server",
+        min_length=1,
     )
 
     otel_capture_content: bool = Field(
@@ -224,7 +225,7 @@ class ServerEnv(BaseModel):
         print(f"OTEL_CAPTURE_CONTENT:  {self.otel_capture_content}")
         print(
             f"GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY: "
-            f"{self.google_developer_knowledge_api_key}\n\n"
+            f"{'<set>' if self.google_developer_knowledge_api_key else '<not set>'}\n\n"
         )
 
     @property
