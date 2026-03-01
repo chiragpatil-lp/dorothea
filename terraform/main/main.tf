@@ -39,7 +39,7 @@ locals {
     ROOT_AGENT_MODEL                                   = coalesce(var.root_agent_model, "gemini-2.5-flash")
     SERVE_WEB_INTERFACE                                = coalesce(var.serve_web_interface, "FALSE")
     TELEMETRY_NAMESPACE                                = var.environment
-  }, var.google_developer_knowledge_api_key != null ? {
+    }, var.google_developer_knowledge_api_key != null ? {
     GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY = var.google_developer_knowledge_api_key
   } : {})
 
