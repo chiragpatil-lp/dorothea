@@ -10,7 +10,6 @@ from google.adk.models.google_llm import Gemini
 from google.adk.plugins.global_instruction_plugin import GlobalInstructionPlugin
 from google.adk.plugins.logging_plugin import LoggingPlugin
 from google.adk.tools import google_search
-from google.adk.tools.mcp_tool import McpToolset, StreamableHTTPConnectionParams
 from google.adk.tools.preload_memory_tool import PreloadMemoryTool
 
 from .callbacks import LoggingCallbacks, add_session_to_memory
@@ -19,15 +18,9 @@ from .prompt import (
     return_global_instruction,
     return_instruction_root,
 )
+from .tools import google_developer_knowledge_toolset
 
 logging_callbacks = LoggingCallbacks()
-
-google_developer_knowledge_toolset = McpToolset(
-    connection_params=StreamableHTTPConnectionParams(
-        url="https://developerknowledge.googleapis.com/mcp",
-        headers={"X-Goog-Api-Key": os.getenv("GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY", "")},
-    )
-)
 
 
 class GlobalVertexGemini(Gemini):
